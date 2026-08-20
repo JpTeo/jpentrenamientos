@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isCoach() {
+      return isSignedIn() && myRole() == 'coach';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isCoach());
+      allow create: if isCoach()
+        && request.resource.data.role == 'student'
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /exercises/{exerciseId} {
+      allow read: if isSignedIn();
+      allow create: if isCoach() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isCoach() && resource.data.createdBy == request.auth.uid;
+    }
+
+    match /plans/{planId} {
+      allow read: if isSignedIn()
+        && (resource.data.coachId == request.auth.uid || resource.data.studentId == request.auth.uid);
+      allow create: if isCoach() && request.resource.data.coachId == request.auth.uid;
+      allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+  }
+}
