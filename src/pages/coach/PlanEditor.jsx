@@ -77,6 +77,16 @@ export default function PlanEditor() {
     return map
   }, [exercises])
 
+  const exerciseGroups = useMemo(() => {
+    const map = {}
+    for (const ex of exercises) {
+      const key = ex.category || 'Sin categoría'
+      if (!map[key]) map[key] = []
+      map[key].push(ex)
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  }, [exercises])
+
   function updateItem(index, patch) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)))
   }
@@ -226,10 +236,14 @@ export default function PlanEditor() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
                   >
                     <option value="">Elegí o escribí abajo</option>
-                    {exercises.map((ex) => (
-                      <option key={ex.id} value={ex.id}>
-                        {ex.name}
-                      </option>
+                    {exerciseGroups.map(([groupName, items]) => (
+                      <optgroup key={groupName} label={groupName}>
+                        {items.map((ex) => (
+                          <option key={ex.id} value={ex.id}>
+                            {ex.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
