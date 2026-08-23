@@ -30,6 +30,7 @@ export function usePlanItems(initialItems) {
           next.sets = count
           next.values = resizeValues(b.values, count)
           next.weights = resizeValues(b.weights, count)
+          next.rests = resizeValues(b.rests, count)
         }
         return next
       }),
@@ -63,6 +64,19 @@ export function usePlanItems(initialItems) {
       prev.map((b, i) => (i === index ? { ...b, weights: repeatFirst(b.weights) } : b)),
     )
   }
+  function updateExerciseRest(index, setIndex, value) {
+    setItems((prev) =>
+      prev.map((b, i) => {
+        if (i !== index) return b
+        const rests = b.rests.slice()
+        rests[setIndex] = value
+        return { ...b, rests }
+      }),
+    )
+  }
+  function repeatExerciseRests(index) {
+    setItems((prev) => prev.map((b, i) => (i === index ? { ...b, rests: repeatFirst(b.rests) } : b)))
+  }
   function pickExercise(index, exercise) {
     updateExerciseBlock(index, {
       exerciseId: exercise?.id ?? '',
@@ -86,6 +100,7 @@ export function usePlanItems(initialItems) {
             ...ex,
             values: resizeValues(ex.values, rounds),
             weights: resizeValues(ex.weights, rounds),
+            rests: resizeValues(ex.rests, rounds),
           })),
         }
       }),
@@ -174,6 +189,35 @@ export function usePlanItems(initialItems) {
       }),
     )
   }
+  function updateCircuitExerciseRest(index, exIndex, setIndex, value) {
+    setItems((prev) =>
+      prev.map((b, i) => {
+        if (i !== index) return b
+        return {
+          ...b,
+          exercises: b.exercises.map((ex, j) => {
+            if (j !== exIndex) return ex
+            const rests = ex.rests.slice()
+            rests[setIndex] = value
+            return { ...ex, rests }
+          }),
+        }
+      }),
+    )
+  }
+  function repeatCircuitExerciseRests(index, exIndex) {
+    setItems((prev) =>
+      prev.map((b, i) => {
+        if (i !== index) return b
+        return {
+          ...b,
+          exercises: b.exercises.map((ex, j) =>
+            j === exIndex ? { ...ex, rests: repeatFirst(ex.rests) } : ex,
+          ),
+        }
+      }),
+    )
+  }
   function pickCircuitExercise(index, exIndex, exercise) {
     updateCircuitExercise(index, exIndex, {
       exerciseId: exercise?.id ?? '',
@@ -195,6 +239,7 @@ export function usePlanItems(initialItems) {
               mode: ex.mode,
               values: ex.values,
               weights: ex.weights,
+              rests: ex.rests,
               tempo: ex.tempo,
               notes: ex.notes,
             }))
@@ -217,6 +262,7 @@ export function usePlanItems(initialItems) {
           sets: block.sets,
           values: block.values,
           weights: block.weights,
+          rests: block.rests,
           tempo: block.tempo,
           notes: block.notes,
         }
@@ -235,6 +281,8 @@ export function usePlanItems(initialItems) {
     repeatExerciseValues,
     updateExerciseWeight,
     repeatExerciseWeights,
+    updateExerciseRest,
+    repeatExerciseRests,
     pickExercise,
     updateCircuitField,
     updateCircuitRounds,
@@ -245,6 +293,8 @@ export function usePlanItems(initialItems) {
     repeatCircuitExerciseValues,
     updateCircuitExerciseWeight,
     repeatCircuitExerciseWeights,
+    updateCircuitExerciseRest,
+    repeatCircuitExerciseRests,
     pickCircuitExercise,
     buildCleanItems,
   }

@@ -14,6 +14,7 @@ export function emptyExercise() {
     sets: 1,
     values: [''],
     weights: [''],
+    rests: [''],
     tempo: '',
     notes: '',
   }
@@ -27,6 +28,7 @@ export function emptyCircuitExercise(valueCount = 1) {
     mode: 'reps',
     values: resizeValues([], valueCount),
     weights: resizeValues([], valueCount),
+    rests: resizeValues([], valueCount),
     tempo: '',
     notes: '',
   }
@@ -72,6 +74,7 @@ export function normalizeItem(raw) {
         mode: ex.mode === 'time' ? 'time' : 'reps',
         values: resizeValues(ex.values, rounds),
         weights: toWeightsArray(ex, rounds),
+        rests: resizeValues(ex.rests, rounds),
         tempo: ex.tempo || '',
         notes: ex.notes || '',
       })),
@@ -89,6 +92,7 @@ export function normalizeItem(raw) {
       sets,
       values: resizeValues(raw.values, sets),
       weights: toWeightsArray(raw, sets),
+      rests: resizeValues(raw.rests, sets),
       tempo: raw.tempo || '',
       notes: raw.notes || '',
     }
@@ -105,6 +109,7 @@ export function normalizeItem(raw) {
     sets,
     values: Array.from({ length: sets }, () => raw.reps || ''),
     weights: Array.from({ length: sets }, () => raw.weight || ''),
+    rests: Array.from({ length: sets }, () => ''),
     tempo: '',
     notes: raw.notes || '',
   }
