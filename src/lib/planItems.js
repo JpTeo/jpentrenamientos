@@ -39,6 +39,7 @@ export function emptyCircuit() {
     type: 'circuit',
     name: '',
     rounds: 3,
+    rest: '',
     notes: '',
     exercises: [emptyCircuitExercise(3)],
   }
@@ -66,6 +67,7 @@ export function normalizeItem(raw) {
       type: 'circuit',
       name: raw.name || '',
       rounds,
+      rest: raw.rest || '',
       notes: raw.notes || '',
       exercises: (raw.exercises || []).map((ex) => ({
         exerciseId: ex.exerciseId || '',

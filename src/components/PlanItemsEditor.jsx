@@ -134,7 +134,7 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
           block.type === 'circuit' ? (
             <div key={index} className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4">
               <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                <div className="grid flex-1 gap-3 sm:grid-cols-3">
                   <div>
                     <label className={labelClass}>Nombre del circuito</label>
                     <input
@@ -151,6 +151,15 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
                       min="1"
                       value={block.rounds}
                       onChange={(e) => updateCircuitRounds(index, e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Descanso entre rondas</label>
+                    <input
+                      value={block.rest}
+                      onChange={(e) => updateCircuitField(index, { rest: e.target.value })}
+                      placeholder="1 min 30 s"
                       className={inputClass}
                     />
                   </div>

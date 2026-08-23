@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { Activity, Check, ChevronLeft, Dumbbell } from 'lucide-react'
+import { Activity, Check, ChevronLeft, Clock3, Dumbbell } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { normalizeItem } from '../../lib/planItems'
+
+function RestBadge({ rest }) {
+  return (
+    <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+      <Clock3 className="size-3.5 text-primary" aria-hidden="true" />
+      <span className="text-xs font-medium text-muted-foreground uppercase">Descanso</span>
+      <span className="font-mono text-sm font-semibold text-primary">{rest}</span>
+    </div>
+  )
+}
 
 function CompleteButton({ completed, onToggle, label }) {
   return (
@@ -39,7 +49,7 @@ function ExerciseCard({ exercise, valueLabel, completed, footer }) {
         completed ? 'border-primary/50' : 'border-border'
       }`}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-4">
         {exercise.imageUrl ? (
           <img
             src={exercise.imageUrl}
@@ -172,6 +182,7 @@ export default function PlanDetail() {
                 ))}
               </div>
               {block.notes && <p className="mt-4 text-sm text-muted-foreground">{block.notes}</p>}
+              {block.rest && <RestBadge rest={block.rest} />}
               <CompleteButton
                 completed={completed.has(String(index))}
                 onToggle={() => toggleComplete(String(index))}

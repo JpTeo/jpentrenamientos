@@ -248,6 +248,7 @@ export function usePlanItems(initialItems) {
             type: 'circuit',
             name: block.name.trim() || 'Circuito',
             rounds: block.rounds,
+            rest: block.rest,
             notes: block.notes,
             exercises: exs,
           }
