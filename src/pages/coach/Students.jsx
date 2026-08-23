@@ -1,11 +1,87 @@
 import { useEffect, useState } from 'react'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  getDocs,
+  writeBatch,
+  doc,
+} from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { createStudentAccount } from '../../firebase/createStudent'
 import { useAuth } from '../../contexts/useAuth'
 
 function generatePassword() {
   return Math.random().toString(36).slice(-8)
+}
+
+function StudentRow({ student, onDelete }) {
+  const [showPassword, setShowPassword] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleCopy() {
+    const message = `¡Hola ${student.name}! Ya podés entrar a ver tus planificaciones:\n${window.location.origin}\n\nUsuario: ${student.email}\nContraseña: ${student.tempPassword ?? '(no disponible)'}`
+    await navigator.clipboard.writeText(message)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleDelete() {
+    if (
+      !confirm(
+        `¿Eliminar a ${student.name}? Va a perder el acceso a la app y se van a borrar sus planificaciones asignadas.`,
+      )
+    )
+      return
+    setDeleting(true)
+    try {
+      await onDelete(student)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <div>
+        <p className="font-medium text-slate-900">{student.name}</p>
+        <p className="text-sm text-slate-500">{student.email}</p>
+        {student.tempPassword && (
+          <p className="mt-0.5 font-mono text-sm text-slate-500">
+            {showPassword ? student.tempPassword : '••••••••'}{' '}
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="ml-1 font-sans text-xs font-medium text-slate-400 hover:text-slate-600"
+            >
+              {showPassword ? 'ocultar' : 'ver'}
+            </button>
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {student.tempPassword && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+          >
+            {copied ? 'Copiado ✓' : 'Copiar para WhatsApp'}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 disabled:opacity-60"
+        >
+          {deleting ? 'Eliminando…' : 'Eliminar'}
+        </button>
+      </div>
+    </li>
+  )
 }
 
 export default function Students() {
@@ -56,6 +132,24 @@ export default function Students() {
       }
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleDeleteStudent(student) {
+    setError('')
+    try {
+      const plansQuery = query(
+        collection(db, 'plans'),
+        where('studentId', '==', student.id),
+        where('coachId', '==', user.uid),
+      )
+      const plansSnap = await getDocs(plansQuery)
+      const batch = writeBatch(db)
+      plansSnap.forEach((planDoc) => batch.delete(planDoc.ref))
+      batch.delete(doc(db, 'users', student.id))
+      await batch.commit()
+    } catch {
+      setError('No se pudo eliminar al alumno. Intentá de nuevo.')
     }
   }
 
@@ -114,12 +208,7 @@ export default function Students() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {students.map((s) => (
-              <li key={s.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-slate-900">{s.name}</p>
-                  <p className="text-sm text-slate-500">{s.email}</p>
-                </div>
-              </li>
+              <StudentRow key={s.id} student={s} onDelete={handleDeleteStudent} />
             ))}
           </ul>
         )}

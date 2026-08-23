@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
+import { countExercises } from '../../lib/planItems'
 
 export default function Plans() {
   const { user } = useAuth()
@@ -44,7 +45,7 @@ export default function Plans() {
                 <div>
                   <p className="font-medium text-slate-900">{p.title}</p>
                   <p className="text-sm text-slate-500">
-                    {p.studentName} · {p.items?.length ?? 0} ejercicios
+                    {p.studentName} · {countExercises(p.items)} ejercicios
                   </p>
                 </div>
                 <Link

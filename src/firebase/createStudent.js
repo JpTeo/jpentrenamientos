@@ -26,6 +26,7 @@ export async function createStudentAccount({ name, email, password, coachUid }) 
       role: 'student',
       name,
       email,
+      tempPassword: password,
       createdBy: coachUid,
       createdAt: serverTimestamp(),
     })

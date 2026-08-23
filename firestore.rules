@@ -20,7 +20,8 @@ service cloud.firestore {
       allow create: if isCoach()
         && request.resource.data.role == 'student'
         && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if false;
+      allow delete: if isCoach() && resource.data.createdBy == request.auth.uid;
+      allow update: if false;
     }
 
     match /exercises/{exerciseId} {
@@ -34,6 +35,19 @@ service cloud.firestore {
         && (resource.data.coachId == request.auth.uid || resource.data.studentId == request.auth.uid);
       allow create: if isCoach() && request.resource.data.coachId == request.auth.uid;
       allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
+    match /planTemplates/{templateId} {
+      allow read: if isCoach() && resource.data.coachId == request.auth.uid;
+      allow create: if isCoach() && request.resource.data.coachId == request.auth.uid;
+      allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
+    match /personalRecords/{recordId} {
+      allow read: if isSignedIn() && resource.data.studentId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.studentId == request.auth.uid;
+      allow update: if false;
     }
   }
 }

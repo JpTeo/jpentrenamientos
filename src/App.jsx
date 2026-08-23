@@ -7,9 +7,13 @@ import Students from './pages/coach/Students'
 import Exercises from './pages/coach/Exercises'
 import Plans from './pages/coach/Plans'
 import PlanEditor from './pages/coach/PlanEditor'
+import Templates from './pages/coach/Templates'
+import TemplateEditor from './pages/coach/TemplateEditor'
 import StudentLayout from './pages/student/StudentLayout'
+import Home from './pages/student/Home'
 import MyPlans from './pages/student/MyPlans'
 import PlanDetail from './pages/student/PlanDetail'
+import Maxes from './pages/student/Maxes'
 
 export default function App() {
   return (
@@ -27,6 +31,9 @@ export default function App() {
             }
           >
             <Route index element={<Navigate to="planificaciones" replace />} />
+            <Route path="plantillas" element={<Templates />} />
+            <Route path="plantillas/nueva" element={<TemplateEditor />} />
+            <Route path="plantillas/:id" element={<TemplateEditor />} />
             <Route path="planificaciones" element={<Plans />} />
             <Route path="planificaciones/nueva" element={<PlanEditor />} />
             <Route path="planificaciones/:id" element={<PlanEditor />} />
@@ -42,8 +49,10 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<MyPlans />} />
-            <Route path=":id" element={<PlanDetail />} />
+            <Route index element={<Home />} />
+            <Route path="planificaciones" element={<MyPlans />} />
+            <Route path="planificaciones/:id" element={<PlanDetail />} />
+            <Route path="marcas" element={<Maxes />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

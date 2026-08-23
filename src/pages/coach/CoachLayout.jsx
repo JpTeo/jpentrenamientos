@@ -30,6 +30,9 @@ export default function CoachLayout() {
           </div>
         </div>
         <nav className="mx-auto flex max-w-4xl gap-1 px-4 pb-3">
+          <NavLink to="/coach/plantillas" className={linkClass}>
+            Plantillas
+          </NavLink>
           <NavLink to="/coach/planificaciones" className={linkClass}>
             Planificaciones
           </NavLink>

@@ -10,3 +10,87 @@ body {
   background: #f8fafc;
   color: #0f172a;
 }
+
+/* Dark theme tokens, scoped to the student-facing side of the app only. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+}
+
+.student-app {
+  --background: oklch(0.12 0.015 250);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.17 0.018 250);
+  --card-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.8 0.16 155);
+  --primary-foreground: oklch(0.12 0.015 250);
+  --secondary: oklch(0.73 0.12 48);
+  --secondary-foreground: oklch(0.14 0.02 48);
+  --muted: oklch(0.22 0.02 250);
+  --muted-foreground: oklch(0.68 0.025 250);
+  --accent: oklch(0.76 0.13 48);
+  --accent-foreground: oklch(0.82 0.13 48);
+  --border: oklch(1 0 0 / 12%);
+
+  color-scheme: dark;
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100svh;
+}
+
+.student-app input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+/* Dark theme for the shared login screen. */
+.login-app {
+  --background: #0b0d0c;
+  --foreground: #f4f7f5;
+  --card: #141816;
+  --card-foreground: #f4f7f5;
+  --primary: #56db8f;
+  --primary-foreground: #07110b;
+  --secondary: #202622;
+  --secondary-foreground: #f4f7f5;
+  --muted: #202622;
+  --muted-foreground: #9aa69f;
+  --accent: #202622;
+  --accent-foreground: #f4f7f5;
+  --border: #2c3630;
+
+  color-scheme: dark;
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100svh;
+}
+
+.auth-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: border-color 0.15s;
+}
+.auth-input::placeholder {
+  color: var(--muted-foreground);
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 20%, transparent);
+}
