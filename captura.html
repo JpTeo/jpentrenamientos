@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teo Kart — modo captura</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      #lienzo { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Página de desarrollo: arranca el motor y una carrera sin React ni menús,
+      para que el arnés de capturas (tools/capturas.mjs) pueda fotografiar el
+      juego de forma determinista. No forma parte del build de producción.
+    -->
+    <div id="lienzo"></div>
+    <script type="module" src="/src/game/captura.js"></script>
+  </body>
+</html>
