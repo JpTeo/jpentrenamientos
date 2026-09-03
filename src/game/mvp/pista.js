@@ -310,7 +310,9 @@ export function crearPista(opciones = {}) {
         p.posicion.y,
         p.posicion.z + n.z * col * 3.4,
       ),
-      rotacionY: Math.atan2(p.tangente.x, p.tangente.z),
+      // El frente del kart es su -Z local, así que el yaw que lo alinea con la
+      // tangente es atan2(-tx, -tz). Con el signo al revés largaban de espaldas.
+      rotacionY: Math.atan2(-p.tangente.x, -p.tangente.z),
     })
   }
 

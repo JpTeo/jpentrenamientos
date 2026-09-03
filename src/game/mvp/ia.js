@@ -7,10 +7,10 @@ import { clamp, damp, deltaAngulo, rng as crearRng } from '../core/utils.js'
 import { VELOCIDAD } from '../core/constantes.js'
 
 const PERSONALIDADES = {
-  agresivo: { desvio: 0.55, frenada: 0.9, derrape: 1.0, ruido: 0.05, tope: 1.0 },
-  prolijo: { desvio: 0.25, frenada: 1.05, derrape: 0.9, ruido: 0.02, tope: 0.98 },
-  tramposo: { desvio: -0.4, frenada: 0.95, derrape: 0.95, ruido: 0.04, tope: 0.99 },
-  torpe: { desvio: 0.1, frenada: 1.25, derrape: 0.5, ruido: 0.11, tope: 0.94 },
+  agresivo: { desvio: 0.3, frenada: 1.0, derrape: 1.0, ruido: 0.035, tope: 1.0 },
+  prolijo: { desvio: 0.18, frenada: 1.1, derrape: 0.9, ruido: 0.015, tope: 0.98 },
+  tramposo: { desvio: -0.26, frenada: 1.02, derrape: 0.95, ruido: 0.03, tope: 0.99 },
+  torpe: { desvio: 0.1, frenada: 1.3, derrape: 0.5, ruido: 0.08, tope: 0.94 },
 }
 
 const DIFICULTAD = { facil: 0.88, normal: 0.96, dificil: 1.0 }
@@ -30,6 +30,7 @@ export class ConductorIA {
     this.desvio = this.p.desvio * (this.rng() * 0.6 + 0.7)
     this.tiempoTrabado = 0
     this.derrapeRestante = 0
+    this.tiempoVivo = 0
   }
 
   /**
@@ -39,6 +40,7 @@ export class ConductorIA {
    */
   pensar(dt, e) {
     const c = this.control
+    this.tiempoVivo += dt
     const pista = this.pista
     const rapidez = Math.abs(e.rapidez)
     const s = e.progreso.s
@@ -51,7 +53,10 @@ export class ConductorIA {
     this.faseRuido += dt * 0.7
     const ruido = Math.sin(this.faseRuido * 2.1) * this.p.ruido
     let lateralObjetivo = this.desvio * _p.ancho * 0.45 + ruido * _p.ancho
-    if (Math.abs(e.progreso.lateral) > _p.ancho) lateralObjetivo = 0 // volver al centro
+    // Si se está yendo ancho, el objetivo se corre hacia adentro en proporción
+    // al error: así vuelve a la trazada en vez de seguir derecho al pasto.
+    const fuera = Math.abs(e.progreso.lateral) - _p.ancho * 0.75
+    if (fuera > 0) lateralObjetivo -= Math.sign(e.progreso.lateral) * Math.min(fuera * 1.6, _p.ancho)
     const nx = _p.tangente.z
     const nz = -_p.tangente.x
     const objX = _p.posicion.x + nx * lateralObjetivo
@@ -74,19 +79,24 @@ export class ConductorIA {
     )
     // Cuanto más cerrada la curva, menor la velocidad objetivo.
     const tope = VELOCIDAD.base * this.factor * this.p.tope
-    const objetivoVel = clamp(tope * (1 - curva * 0.62 * this.p.frenada), tope * 0.42, tope)
+    const objetivoVel = clamp(tope * (1 - curva * 0.72 * this.p.frenada), tope * 0.38, tope)
 
     // --- Acelerador y freno ---
     c.acelerar = rapidez < objetivoVel ? 1 : 0.25
     c.frenar = rapidez > objetivoVel * 1.22 ? 0.7 : 0
-    if (e.marchaAtras) {
-      // Encarado al revés: frenar y girar hasta reencauzar.
+    // Encarado al revés: frenar y girar hasta reencauzar. Sólo cuenta si de
+    // verdad se está moviendo: parado en la parrilla, `marchaAtras` es ruido.
+    if (e.marchaAtras && rapidez > 2) {
       c.acelerar = 0
       c.frenar = 1
     }
 
     // --- Volante ---
-    let giro = clamp(error * 2.1, -1, 1)
+    // El rumbo del kart es `yaw + PI` (su frente es el -Z local) y la física
+    // aplica `yaw += -giro * omega * dt`. Para cerrar un error de rumbo
+    // positivo hay que pedir giro NEGATIVO: con el signo al revés, la IA se
+    // iba de la pista a los dos segundos.
+    let giro = clamp(-error * 2.5, -1, 1)
 
     // --- Derrape en curvas cerradas ---
     const quiereDerrape =
@@ -111,17 +121,22 @@ export class ConductorIA {
     c.mirarAtras = false
     c.pausa = false
 
-    // --- Rescate: si lleva mucho tiempo casi parado, marcha atrás y reencara ---
-    if (rapidez < 2.5 && !e.terminado) {
+    // --- Rescate: si pide acelerador y aun así no avanza, es que está trabado
+    // contra algo. Ojo con la largada: ahí todos están a 0 km/h y no por eso
+    // hay que mandarlos marcha atrás.
+    const pidiendoGas = c.acelerar > 0.5 && c.frenar < 0.5
+    if (this.tiempoVivo > 3 && rapidez < 2.5 && pidiendoGas && !e.terminado) {
       this.tiempoTrabado += dt
-      if (this.tiempoTrabado > 1.6) {
-        c.acelerar = 0
-        c.frenar = 1
-        c.giro = -clamp(error * 2, -1, 1)
-        if (this.tiempoTrabado > 3.2) this.tiempoTrabado = 0
-      }
-    } else {
+    } else if (rapidez > 4) {
       this.tiempoTrabado = 0
+    }
+    if (this.tiempoTrabado > 2) {
+      // Marcha atrás corta y volanteo al revés para despegarse del muro.
+      c.acelerar = 0
+      c.frenar = 1
+      c.giro = clamp(error * 2, -1, 1) // al revés que en marcha adelante
+      c.derrape = false
+      if (this.tiempoTrabado > 3.4) this.tiempoTrabado = 0
     }
 
     return c

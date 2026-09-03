@@ -82,7 +82,7 @@
 /* ---------- Selección de personaje ---------- */
 .tk__socios { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
 .tk__socio {
-  width: 168px;
+  width: 180px;
   padding: 1rem 0.8rem;
   border: var(--tk-borde);
   border-radius: 20px;
@@ -103,8 +103,8 @@
 }
 .tk__socioNombre { font-weight: 900; font-size: 1.25rem; margin: 0 0 0.15rem; }
 .tk__socioReal { font-size: 0.74rem; opacity: 0.75; margin: 0 0 0.6rem; }
-.tk__barra { display: flex; align-items: center; gap: 0.4rem; font-size: 0.66rem; margin-bottom: 0.22rem; }
-.tk__barra span { width: 52px; text-align: left; opacity: 0.8; }
+.tk__barra { display: flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; margin-bottom: 0.24rem; }
+.tk__barra span { width: 62px; flex: none; text-align: left; opacity: 0.8; white-space: nowrap; }
 .tk__barraCanal { flex: 1; height: 7px; border-radius: 99px; background: rgba(0,0,0,0.35); overflow: hidden; }
 .tk__barraRelleno { height: 100%; background: var(--tk-amarillo); border-radius: 99px; transition: width 0.3s ease; }
 
