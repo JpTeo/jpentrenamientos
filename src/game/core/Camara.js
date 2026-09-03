@@ -3,7 +3,7 @@
 // cinematográficos para la presentación y el final.
 import * as THREE from 'three'
 import { CAMARA, VELOCIDAD } from './constantes.js'
-import { clamp, clamp01, damp, lerp, smoothstep, TAU } from './utils.js'
+import { clamp01, damp, lerp, smoothstep, TAU } from './utils.js'
 
 const _obj = new THREE.Vector3()
 const _mira = new THREE.Vector3()

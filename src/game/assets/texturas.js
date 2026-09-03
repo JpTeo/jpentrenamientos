@@ -202,7 +202,8 @@ export function texturaArena() {
       ctx.beginPath()
       for (let x = 0; x <= S; x += 8) {
         const y = i * 9 + Math.sin(x * 0.02 + i) * 6 + ruido2D(x * 0.02, i, 3) * 8
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        if (x === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.stroke()
     }
@@ -304,7 +305,8 @@ export function texturaAgua() {
       const y0 = r() * S
       for (let x = 0; x <= S; x += 10) {
         const y = y0 + Math.sin(x * 0.05 + i) * 3
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        if (x === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.stroke()
     }
@@ -450,7 +452,8 @@ export function texturaMadera(color = 0xb5793f) {
       const x0 = r() * S
       for (let y = 0; y <= S; y += 12) {
         const x = x0 + Math.sin(y * 0.03 + i) * 4 + ruido2D(i, y * 0.05, 9) * 6
-        y === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        if (y === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.stroke()
     }

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
+import Kart from './pages/Kart'
 import CoachLayout from './pages/coach/CoachLayout'
 import Students from './pages/coach/Students'
 import Exercises from './pages/coach/Exercises'
@@ -21,6 +22,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/kart" element={<Kart />} />
 
           <Route
             path="/coach"

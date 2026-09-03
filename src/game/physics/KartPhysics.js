@@ -51,6 +51,9 @@ const SUPERFICIES_MORTALES = { lava: true, agua: true, vacio: true }
 
 /** Velocidad con la que se recupera el agarre lateral en asfalto (1/s). */
 const LAMBDA_LATERAL = 13
+
+// Rozamiento de curva: cuánta rapidez cuesta llevar el kart de costado.
+const ROCE_CURVA = 0.22
 /** El derrape rota la guiñada más rápido que un giro normal. */
 const MULT_YAW_DERRAPE = 1.28
 /** Apertura del derrape: 0.45 = derrape abierto, 1.3 = cerrado sobre el vértice. */
@@ -330,7 +333,7 @@ export class FisicaKart {
     this._girar(dt, giro, sinControl)
 
     // 7. Deriva lateral (agarre).
-    this._deriva(dt, sup)
+    this._deriva(dt)
 
     // 8. Integración en XZ.
     const vx = this._fx * this.rapidez + this._dx * this.desliz
@@ -345,7 +348,7 @@ export class FisicaKart {
     if (mundo && mundo.karts) this._colisionKarts(mundo.karts)
 
     // 10. Progreso, vueltas y sentido de marcha.
-    this._progreso(dt, sup)
+    this._progreso(dt)
 
     // 11. Presentación (orientación, inclinaciones, ruedas).
     this._visual(dt, giro, sup)
@@ -665,13 +668,6 @@ export class FisicaKart {
       this.rapidez = damp(this.rapidez, 0, FISICA.frenoMotor * (enSuelo ? 1 : 0.3), dt)
     }
 
-    // Arrastre por deslizamiento lateral: derrapar cuesta punta.
-    const slip = Math.abs(this.desliz)
-    if (slip > 1 && this.rapidez > 0) {
-      this.rapidez -= Math.min(slip * 0.09, 2.4) * dt
-      if (this.rapidez < 0) this.rapidez = 0
-    }
-
     // Techo: nunca por encima del tope; si el turbo se apagó, decae suave.
     if (this.rapidez > vMax) this.rapidez = damp(this.rapidez, vMax, 3.2, dt)
     const topeAtras = -P.velocidadAtras
@@ -725,7 +721,7 @@ export class FisicaKart {
   }
 
   /** Fricción lateral: cuánto "muerde" el kart de costado. */
-  _deriva(dt, sup) {
+  _deriva(dt) {
     const e = this.estado
     const P = this.params
     const agarreSup = AGARRE_SUPERFICIE[e.superficie] ?? FISICA.agarreAsfalto
@@ -734,14 +730,39 @@ export class FisicaKart {
     if (!e.enSuelo) lambda *= 0.1
     if (e.girando > 0) lambda *= 0.4
 
-    let objetivo = 0
+    // Ángulo de deriva objetivo: cero con agarre pleno, el de contraderrape
+    // mientras se derrapa.
+    let angObjetivo = 0
     if (e.derrapando && e.enSuelo) {
-      // El derrape mantiene un ángulo de contraderrape estable.
-      const ang = this.anguloDerrapeActual || 0
-      objetivo = -Math.sign(ang || e.ladoDerrape) * Math.abs(this.rapidez) * Math.tan(Math.abs(ang))
+      angObjetivo = -(this.anguloDerrapeActual || 0)
       lambda = Math.max(lambda, 5.5)
     }
-    this.desliz = damp(this.desliz, objetivo, lambda, dt)
+
+    // El agarre NO borra la velocidad lateral: rota el vector velocidad hacia
+    // el frente conservando el módulo. Por eso doblar curva la trayectoria en
+    // vez de frenar el kart. Lo único que resta rapidez es el rozamiento de
+    // curva, explícito y chico. (Amortiguar `desliz` a secas destruía la
+    // energía y hacía que un derrape sostenido dejara el kart casi parado.)
+    const v = Math.hypot(this.rapidez, this.desliz)
+    if (v > 0.05) {
+      const atras = this.rapidez < 0
+      let ang = Math.atan2(this.desliz, this.rapidez)
+      if (atras) ang += ang > 0 ? -Math.PI : Math.PI
+      // Al derrapar el ángulo es de diseño, no emergente: si lo dejamos
+      // buscarlo por amortiguación, la guiñada lo empuja más rápido de lo que
+      // el agarre lo corrige y el kart termina cruzado 68º, o sea un trompo.
+      ang = damp(ang, angObjetivo, e.derrapando && e.enSuelo ? 20 : lambda, dt)
+      let vNuevo = v * Math.max(0, 1 - ROCE_CURVA * Math.abs(ang) * dt)
+      // Techo sobre la velocidad TOTAL, no sobre la componente hacia adelante:
+      // si no, ir cruzado permitiría superar el tope.
+      const vTope = this._velocidadMaxima()
+      if (vNuevo > vTope) vNuevo = damp(vNuevo, vTope, 3.2, dt)
+      const signo = atras ? -1 : 1
+      this.rapidez = signo * vNuevo * Math.cos(ang)
+      this.desliz = signo * vNuevo * Math.sin(ang)
+    } else {
+      this.desliz = damp(this.desliz, 0, lambda, dt)
+    }
 
     // Fuera del asfalto el kart patina y vibra: micro-ruido determinista.
     if (e.enSuelo && agarreSup < 0.8 && Math.abs(this.rapidez) > 4) {
@@ -840,7 +861,7 @@ export class FisicaKart {
   }
 
   /** Progreso sobre el trazado, checkpoints, vueltas y sentido de marcha. */
-  _progreso(dt, sup) {
+  _progreso(dt) {
     const e = this.estado
     const p = this._progresoPista(e.posicion.x, e.posicion.z)
     e.progreso = p

@@ -246,5 +246,25 @@ const ok = (cond, msg, extra = '') => { console.log(`${cond ? '  OK  ' : ' FALLA
      `${(f.estado.rapidez*3.6).toFixed(0)} vs ${(g.estado.rapidez*3.6).toFixed(0)} km/h`)
 }
 
+// (h) un derrape largo conserva la velocidad (la razón de ser del derrape)
+{
+  const f = nuevoPlano()
+  const ctrl = c(); ctrl.acelerar = 1
+  correr(f, ctrl, 10)
+  const tope = f.estado.rapidez
+  ctrl.giro = 1; ctrl.derrape = true; ctrl.derrapeAbajo = true
+  f.step(1/60, ctrl, { karts: [f.estado] })
+  ctrl.derrapeAbajo = false
+  correr(f, ctrl, 3.5)
+  // Lo que importa es la rapidez REAL sobre la pista (el módulo de la
+  // velocidad), no la componente hacia adelante: yendo cruzado, el kart
+  // avanza igual aunque el morro apunte a otro lado.
+  const vTotal = Math.hypot(f.rapidez, f.desliz)
+  const frac = vTotal / tope
+  ok(frac > 0.9, 'tras 3,5 s de derrape conserva >90% de la velocidad',
+     `${(frac*100).toFixed(0)}% (${(vTotal*3.6).toFixed(0)} km/h)`)
+  ok(f.estado.nivelDerrape === 3, 'y sigue derrapando en nivel 3')
+}
+
 console.log(fallos === 0 ? '\nTODO OK' : `\n${fallos} FALLAS`)
 process.exit(fallos ? 1 : 0)

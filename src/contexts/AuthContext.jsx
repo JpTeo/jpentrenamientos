@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { auth, db } from '../firebase/config'
+import { auth, db, firebaseListo } from '../firebase/config'
 
 export const AuthContext = createContext(null)
 
@@ -11,6 +11,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Sin Firebase configurado no hay sesión posible: cortamos la carga para
+    // que la app muestre el login en vez de quedarse en blanco.
+    if (!firebaseListo) {
+      setLoading(false)
+      return
+    }
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser)
       if (!firebaseUser) {
@@ -22,7 +28,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !firebaseListo) return
     const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (snap) => {
       setProfile(snap.exists() ? { id: snap.id, ...snap.data() } : null)
       setLoading(false)
@@ -30,7 +36,7 @@ export function AuthProvider({ children }) {
     return unsubscribeProfile
   }, [user])
 
-  const signOut = () => firebaseSignOut(auth)
+  const signOut = () => (firebaseListo ? firebaseSignOut(auth) : Promise.resolve())
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signOut }}>
