@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "capturas": "node tools/capturas.mjs"
+    "capturas": "node tools/capturas.mjs",
+    "empaquetar": "node tools/empaquetar.mjs"
   },
   "dependencies": {
     "firebase": "^12.17.1",

@@ -177,3 +177,13 @@ npm run capturas
 - Ítems (bananas, caparazones, hongos).
 - Sonido.
 - Un segundo circuito.
+
+## Jugarlo sin instalar nada
+
+```bash
+npm run empaquetar
+```
+
+Genera `dist-suelto/teo-kart.html`: **un único archivo** con todo adentro
+(JavaScript, estilos y texturas), sin pedidos de red. Se abre con doble clic,
+se pasa por WhatsApp o se sube a cualquier hosting estático tal cual está.

@@ -26,3 +26,7 @@ dist-ssr
 
 # Capturas del bucle de revision visual
 capturas/
+
+# Empaquetado suelto del juego
+dist-suelto/
+.tmp-suelto/
