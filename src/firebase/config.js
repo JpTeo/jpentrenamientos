@@ -28,6 +28,6 @@ export const storage = app ? getStorage(app) : null
 if (!firebaseListo && import.meta.env.DEV) {
   console.warn(
     'Firebase sin configurar: copiá .env.example a .env y completá las variables ' +
-      'VITE_FIREBASE_*. Mientras tanto, el login no funciona (Teo Kart en /kart sí).',
+      'VITE_FIREBASE_*. Mientras tanto la app arranca, pero el login no funciona.',
   )
 }
