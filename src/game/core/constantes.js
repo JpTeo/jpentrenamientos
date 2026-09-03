@@ -84,9 +84,11 @@ export const PENALIZACION_SUPERFICIE = {
 
 /** Cámara de persecución. */
 export const CAMARA = {
-  distancia: 6.4,
-  altura: 2.55,
-  miraAltura: 1.15,
+  distancia: 7.6,
+  altura: 3.5,
+  // Se mira bastante por encima del kart: apuntando bajo, la pantalla se
+  // llenaba de asfalto y no se veía la curva que venía.
+  miraAltura: 1.55,
   fovBase: 62,
   fovTurbo: 78,
   suavizadoPos: 7.5,

@@ -131,10 +131,13 @@ export class CamaraCarrera {
       if (_obj.y < minY) _obj.y = minY
     }
 
+    // Ojo con el signo: `signo` coloca la cámara (detrás en vista normal), pero
+    // el punto de mira va del lado contrario, hacia donde se avanza. Con el
+    // mismo signo la cámara terminaba mirando hacia atrás del kart.
     _mira
       .copy(e.posicion)
       .addScaledVector(_arriba, CAMARA.miraAltura)
-      .addScaledVector(_adelante, signo * (2.6 + rapidezNorm * 2.4))
+      .addScaledVector(_adelante, -signo * (6 + rapidezNorm * 4))
 
     if (this._primerCuadro) {
       this.posicion.copy(_obj)

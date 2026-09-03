@@ -1,7 +1,6 @@
 // Simulación de una carrera completa sin navegador: verifica que la IA
 // complete las vueltas, que el conteo funcione y que nadie se quede trabado.
 //     node src/game/mvp/__prueba.mjs
-import * as THREE from 'three'
 import { crearPista } from './pista.js'
 import { ConductorIA } from './ia.js'
 import { FisicaKart } from '../physics/KartPhysics.js'

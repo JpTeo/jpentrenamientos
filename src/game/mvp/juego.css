@@ -116,7 +116,6 @@
   border: 3px solid rgba(255, 248, 231, 0.9);
   border-radius: 16px;
   padding: 0.5rem 0.85rem;
-  backdrop-filter: blur(3px);
 }
 .tk__vueltas { top: 14px; left: 14px; font-size: 1.05rem; }
 .tk__vueltas b { font-size: 1.6rem; }
@@ -124,8 +123,10 @@
 .tk__tiempos b { font-size: 1.35rem; }
 
 .tk__puesto {
+  /* Sin `position: absolute` caía en el flujo normal y quedaba tapado por el
+     panel de vueltas, en la esquina de arriba. */
+  position: absolute;
   bottom: 14px; left: 14px; display: flex; align-items: baseline; gap: 2px;
-  background: none; border: none; padding: 0;
 }
 .tk__puestoNum {
   font-size: 4.6rem; line-height: 1; font-weight: 900; color: var(--tk-amarillo);

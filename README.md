@@ -92,3 +92,88 @@ npm run dev
 - Feedback / comentarios entre profe y alumno por planificación.
 - Marcar entrenamientos como completados.
 - Notificaciones cuando hay una planificación nueva.
+
+---
+
+# Teo Kart
+
+Juego de carreras estilo kart que vive dentro de la misma app, en la ruta
+**`/kart`**. No necesita login ni Firebase: entrás y corrés.
+
+## Qué hay en este MVP
+
+- **Un circuito**: «Circuito Cooperativa», 1.102 m, 3 vueltas. Recta de meta
+  ancha, curva rápida, horquilla cerrada, chicane y una peraltada larga.
+- **Los cuatro socios**: Jp, Male, Keke y Mati, cada uno con su kart, su color
+  y estadísticas propias (velocidad, aceleración, peso, manejo, tracción).
+- **Un jugador contra tres rivales de la máquina.** Elegís tu personaje y los
+  otros tres los maneja la computadora.
+- **Derrape con mini-turbo escalonado**, como en la saga: mantené el derrape en
+  la curva y las chispas pasan de azul a naranja y a rosa. Cuanto más aguantes,
+  más turbo te llevás al soltar.
+- **Turbo de largada**: si empezás a acelerar en el momento justo antes del
+  «¡YA!», arrancás con un empujón. Si te apurás de más, ahogás el motor.
+- **Paneles de turbo** en la pista, penalización por irte al pasto, muros que
+  rebotan y empujones entre karts.
+- HUD con puesto, vueltas, tiempos, minimapa y tabla de posiciones.
+
+## Controles
+
+| Tecla | Acción |
+| --- | --- |
+| `↑` / `W` | Acelerar |
+| `↓` / `S` | Frenar y marcha atrás |
+| `←` `→` / `A` `D` | Doblar |
+| `Espacio` | Derrapar (mantener) |
+| `C` | Mirar atrás |
+
+También anda con joystick (mapeo estándar: gatillos para acelerar y frenar,
+`RB` para derrapar).
+
+## Cómo probarlo
+
+```bash
+npm install
+npm run dev
+```
+
+Y entrá a <http://localhost:5173/kart>.
+
+## Cómo está armado
+
+Todo el 3D es **Three.js con geometría generada por código**: no hay un solo
+archivo de modelo, textura ni sonido. Las texturas (asfalto, césped, damero,
+bordillos) se dibujan con Canvas 2D al arrancar.
+
+```
+src/game/
+  core/        motor, entrada, cámara, constantes y utilidades
+  physics/     física del kart (derrape, mini-turbo, colisiones) + banco de pruebas
+  characters/  ficha de los cuatro socios y sus rasgos
+  assets/      paleta y generador de texturas
+  mvp/         circuito, modelos 3D, IA rival y orquestador de la carrera
+src/pages/Kart.jsx   pantalla del juego (menú, HUD y resultados)
+```
+
+### Pruebas
+
+Corren en Node, sin navegador ni framework de tests:
+
+```bash
+node src/game/physics/__prueba.mjs   # 17 verificaciones de manejo
+node src/game/mvp/__prueba.mjs       # simula una carrera completa de 3 vueltas
+```
+
+Y para ver cómo queda sin abrir el navegador a mano:
+
+```bash
+npm run capturas
+```
+
+## Lo que falta (próxima etapa)
+
+- **Multijugador**: que los cuatro corran desde sus computadoras con un código
+  de sala. Es lo que sigue.
+- Ítems (bananas, caparazones, hongos).
+- Sonido.
+- Un segundo circuito.
