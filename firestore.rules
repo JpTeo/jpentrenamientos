@@ -34,7 +34,10 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && (resource.data.coachId == request.auth.uid || resource.data.studentId == request.auth.uid);
       allow create: if isCoach() && request.resource.data.coachId == request.auth.uid;
-      allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+      allow update: if (isCoach() && resource.data.coachId == request.auth.uid)
+        || (isSignedIn() && resource.data.studentId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'updatedAt']));
+      allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
     }
 
     match /planTemplates/{templateId} {
