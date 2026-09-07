@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { Activity, Check, ChevronLeft, Clock3, Dumbbell } from 'lucide-react'
+import { addDoc, collection, doc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { Activity, Check, ChevronLeft, Clock3, Dumbbell, Pencil } from 'lucide-react'
 import { db } from '../../firebase/config'
+import { useAuth } from '../../contexts/useAuth'
 import { normalizeItem } from '../../lib/planItems'
 
 function RestBadge({ rest }) {
@@ -37,7 +38,75 @@ function CompleteButton({ completed, onToggle, label }) {
   )
 }
 
-function ExerciseCard({ exercise, valueLabel, completed, footer }) {
+function CommentBox({ onSend }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  async function handleSend() {
+    if (!text.trim()) return
+    setSending(true)
+    try {
+      await onSend(text.trim())
+      setText('')
+      setOpen(false)
+      setSent(true)
+    } catch {
+      // silently ignore — the button stays available to retry
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="shrink-0">
+      <button
+        type="button"
+        onClick={() => {
+          setSent(false)
+          setOpen((v) => !v)
+        }}
+        aria-label="Dejar un comentario sobre este ejercicio"
+        className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Pencil className="size-4" aria-hidden="true" />
+      </button>
+      {sent && !open && <p className="mt-1 text-right text-[11px] text-primary">Enviado ✓</p>}
+      {open && (
+        <div className="absolute right-4 z-10 mt-2 w-64 rounded-xl border border-border bg-card p-3 shadow-lg sm:right-6">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            placeholder="Contale a tu profe algo sobre este ejercicio..."
+            className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+            autoFocus
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={sending || !text.trim()}
+              className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {sending ? 'Enviando…' : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExerciseCard({ exercise, valueLabel, completed, footer, onSendComment }) {
   const isTime = exercise.mode === 'time'
   const gridCols = isTime
     ? 'grid-cols-[68px_1fr_1fr_1fr] sm:grid-cols-[84px_1fr_1fr_1fr]'
@@ -45,7 +114,7 @@ function ExerciseCard({ exercise, valueLabel, completed, footer }) {
 
   return (
     <article
-      className={`rounded-2xl border bg-card p-5 transition-colors sm:p-6 ${
+      className={`relative rounded-2xl border bg-card p-5 transition-colors sm:p-6 ${
         completed ? 'border-primary/50' : 'border-border'
       }`}
     >
@@ -67,6 +136,7 @@ function ExerciseCard({ exercise, valueLabel, completed, footer }) {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{exercise.notes}</p>
           )}
         </div>
+        {onSendComment && <CommentBox onSend={onSendComment} />}
       </div>
 
       {exercise.tempo && (
@@ -111,6 +181,7 @@ function ExerciseCard({ exercise, valueLabel, completed, footer }) {
 
 export default function PlanDetail() {
   const { id } = useParams()
+  const { user, profile } = useAuth()
   const [plan, setPlan] = useState(null)
   const [loading, setLoading] = useState(true)
   const [completed, setCompleted] = useState(new Set())
@@ -122,6 +193,20 @@ export default function PlanDetail() {
     })
     return unsub
   }, [id])
+
+  async function handleSendComment(exerciseName, message) {
+    await addDoc(collection(db, 'exerciseComments'), {
+      coachId: plan.coachId,
+      studentId: user.uid,
+      studentName: profile?.name ?? '',
+      planId: plan.id,
+      planTitle: plan.title ?? '',
+      exerciseName,
+      message,
+      read: false,
+      createdAt: serverTimestamp(),
+    })
+  }
 
   function toggleComplete(key) {
     setCompleted((prev) => {
@@ -178,6 +263,7 @@ export default function PlanDetail() {
                     exercise={ex}
                     valueLabel="Ronda"
                     completed={completed.has(String(index))}
+                    onSendComment={(message) => handleSendComment(ex.name, message)}
                   />
                 ))}
               </div>
@@ -195,6 +281,7 @@ export default function PlanDetail() {
               exercise={block}
               valueLabel="Serie"
               completed={completed.has(String(index))}
+              onSendComment={(message) => handleSendComment(block.name, message)}
               footer={
                 <CompleteButton
                   completed={completed.has(String(index))}

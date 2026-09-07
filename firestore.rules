@@ -43,6 +43,12 @@ service cloud.firestore {
       allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
     }
 
+    match /exerciseComments/{commentId} {
+      allow read: if isCoach() && resource.data.coachId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
     match /personalRecords/{recordId} {
       allow read: if isSignedIn() && resource.data.studentId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;

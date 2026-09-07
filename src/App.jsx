@@ -9,6 +9,8 @@ import Plans from './pages/coach/Plans'
 import PlanEditor from './pages/coach/PlanEditor'
 import Templates from './pages/coach/Templates'
 import TemplateEditor from './pages/coach/TemplateEditor'
+import ImportTemplates from './pages/coach/ImportTemplates'
+import Messages from './pages/coach/Messages'
 import StudentLayout from './pages/student/StudentLayout'
 import Home from './pages/student/Home'
 import MyPlans from './pages/student/MyPlans'
@@ -32,6 +34,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="planificaciones" replace />} />
             <Route path="plantillas" element={<Templates />} />
+            <Route path="plantillas/importar" element={<ImportTemplates />} />
             <Route path="plantillas/nueva" element={<TemplateEditor />} />
             <Route path="plantillas/:id" element={<TemplateEditor />} />
             <Route path="planificaciones" element={<Plans />} />
@@ -39,6 +42,7 @@ export default function App() {
             <Route path="planificaciones/:id" element={<PlanEditor />} />
             <Route path="alumnos" element={<Students />} />
             <Route path="ejercicios" element={<Exercises />} />
+            <Route path="mensajes" element={<Messages />} />
           </Route>
 
           <Route

@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 
 const linkClass = ({ isActive }) =>
@@ -7,7 +10,18 @@ const linkClass = ({ isActive }) =>
   }`
 
 export default function CoachLayout() {
-  const { profile, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'exerciseComments'),
+      where('coachId', '==', user.uid),
+      where('read', '==', false),
+    )
+    const unsub = onSnapshot(q, (snap) => setUnreadCount(snap.size))
+    return unsub
+  }, [user.uid])
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -41,6 +55,16 @@ export default function CoachLayout() {
           </NavLink>
           <NavLink to="/coach/ejercicios" className={linkClass}>
             Ejercicios
+          </NavLink>
+          <NavLink to="/coach/mensajes" className={linkClass}>
+            <span className="inline-flex items-center gap-1.5">
+              Mensajes
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </span>
           </NavLink>
         </nav>
       </header>
