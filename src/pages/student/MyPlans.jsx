@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { ArrowRight, ChevronLeft, Dumbbell } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { countExercises } from '../../lib/planItems'
+import { groupPlansByTitle } from '../../lib/planGroups'
 
 export default function MyPlans() {
   const { user } = useAuth()
@@ -22,6 +23,8 @@ export default function MyPlans() {
     return unsub
   }, [user.uid])
 
+  const groups = useMemo(() => groupPlansByTitle(plans), [plans])
+
   return (
     <section className="mt-12 max-w-3xl">
       <Link
@@ -38,33 +41,43 @@ export default function MyPlans() {
 
       {loading ? (
         <p className="mt-10 text-sm text-muted-foreground">Cargando…</p>
-      ) : plans.length === 0 ? (
+      ) : groups.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">
           Todavía no tenés planificaciones asignadas.
         </p>
       ) : (
         <div className="mt-10 flex flex-col gap-3">
-          {plans.map((p) => (
-            <Link
-              key={p.id}
-              to={`/alumno/planificaciones/${p.id}`}
-              className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
-            >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Dumbbell className="size-5" aria-hidden="true" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">{p.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {countExercises(p.items)} ejercicios
-                </p>
-              </div>
-              <ArrowRight
-                className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1"
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
+          {groups.map((group) => {
+            const isMultiDay = group.plans.length > 1
+            const single = group.plans[0]
+            return (
+              <Link
+                key={group.groupTitle.toLowerCase()}
+                to={
+                  isMultiDay
+                    ? `/alumno/planificaciones/grupo/${encodeURIComponent(group.groupTitle)}`
+                    : `/alumno/planificaciones/${single.id}`
+                }
+                className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
+              >
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Dumbbell className="size-5" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{group.groupTitle}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isMultiDay
+                      ? `${group.plans.length} días`
+                      : `${countExercises(single.items)} ejercicios`}
+                  </p>
+                </div>
+                <ArrowRight
+                  className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </Link>
+            )
+          })}
         </div>
       )}
     </section>

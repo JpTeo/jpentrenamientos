@@ -5,6 +5,15 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { countExercises } from '../../lib/planItems'
 
+function formatDate(ts) {
+  if (!ts?.seconds) return ''
+  return new Date(ts.seconds * 1000).toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
 export default function Plans() {
   const { user } = useAuth()
   const [plans, setPlans] = useState([])
@@ -47,6 +56,12 @@ export default function Plans() {
                   <p className="text-sm text-slate-500">
                     {p.studentName} · {countExercises(p.items)} ejercicios
                   </p>
+                  {p.completionCount > 0 && (
+                    <p className="mt-0.5 text-xs text-emerald-700">
+                      Hecha {p.completionCount} {p.completionCount === 1 ? 'vez' : 'veces'}
+                      {p.lastCompletedAt && ` · última vez ${formatDate(p.lastCompletedAt)}`}
+                    </p>
+                  )}
                 </div>
                 <Link
                   to={`/coach/planificaciones/${p.id}`}

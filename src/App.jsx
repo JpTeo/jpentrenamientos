@@ -14,6 +14,7 @@ import Messages from './pages/coach/Messages'
 import StudentLayout from './pages/student/StudentLayout'
 import Home from './pages/student/Home'
 import MyPlans from './pages/student/MyPlans'
+import MyPlanGroup from './pages/student/MyPlanGroup'
 import PlanDetail from './pages/student/PlanDetail'
 import Maxes from './pages/student/Maxes'
 
@@ -55,6 +56,7 @@ export default function App() {
           >
             <Route index element={<Home />} />
             <Route path="planificaciones" element={<MyPlans />} />
+            <Route path="planificaciones/grupo/:groupKey" element={<MyPlanGroup />} />
             <Route path="planificaciones/:id" element={<PlanDetail />} />
             <Route path="marcas" element={<Maxes />} />
           </Route>

@@ -4,6 +4,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { ArrowRight, Dumbbell, Trophy, Weight } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
+import { groupPlansByTitle } from '../../lib/planGroups'
 
 export default function Home() {
   const { user, profile } = useAuth()
@@ -14,7 +15,10 @@ export default function Home() {
 
   useEffect(() => {
     const q = query(collection(db, 'plans'), where('studentId', '==', user.uid))
-    const unsub = onSnapshot(q, (snap) => setPlanCount(snap.size))
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      setPlanCount(groupPlansByTitle(list).length)
+    })
     return unsub
   }, [user.uid])
 

@@ -7,10 +7,12 @@ import {
   writeBatch,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   onSnapshot,
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { Pencil, Trash2 } from 'lucide-react'
 import { db, storage } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { normalizeName } from '../../lib/normalizeName'
@@ -74,6 +76,14 @@ export default function Exercises() {
 
   const [deletingAll, setDeletingAll] = useState(false)
   const [deleteAllError, setDeleteAllError] = useState('')
+
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editCategory, setEditCategory] = useState('')
+  const [editFile, setEditFile] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     const q = query(collection(db, 'exercises'), where('createdBy', '==', user.uid))
@@ -287,6 +297,64 @@ export default function Exercises() {
     }
   }
 
+  function startEdit(ex) {
+    setEditingId(ex.id)
+    setEditName(ex.name || '')
+    setEditCategory(ex.category || '')
+    setEditFile(null)
+    setEditError('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditFile(null)
+    setEditError('')
+  }
+
+  async function handleSaveEdit(ex) {
+    if (!editName.trim()) {
+      setEditError('El nombre no puede estar vacío.')
+      return
+    }
+    setEditSaving(true)
+    setEditError('')
+    try {
+      let imageUrl = ex.imageUrl ?? null
+      if (editFile) {
+        const path = `exercises/${user.uid}/${Date.now()}-${editFile.name}`
+        const storageRef = ref(storage, path)
+        await withTimeout(uploadBytes(storageRef, editFile), 20000)
+        imageUrl = await withTimeout(getDownloadURL(storageRef), 20000)
+      }
+      await withTimeout(
+        updateDoc(doc(db, 'exercises', ex.id), {
+          name: editName.trim(),
+          category: editCategory.trim() || null,
+          imageUrl,
+        }),
+        20000,
+      )
+      cancelEdit()
+    } catch {
+      setEditError('No se pudo guardar. Intentá de nuevo.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  async function handleDeleteExercise(ex) {
+    if (!confirm(`¿Eliminar "${ex.name}" de tu librería?`)) return
+    setDeletingId(ex.id)
+    try {
+      await deleteDoc(doc(db, 'exercises', ex.id))
+      if (editingId === ex.id) cancelEdit()
+    } catch {
+      alert('No se pudo eliminar el ejercicio. Intentá de nuevo.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -469,25 +537,103 @@ export default function Exercises() {
               <div key={groupName}>
                 <h3 className="mb-2 text-sm font-semibold text-slate-500">{groupName}</h3>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {items.map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="rounded-xl border border-slate-100 p-3 text-center"
-                    >
-                      <div className="mb-2 flex h-20 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                        {ex.imageUrl ? (
-                          <img
-                            src={ex.imageUrl}
-                            alt={ex.name}
-                            className="h-full w-full object-cover"
+                  {items.map((ex) =>
+                    editingId === ex.id ? (
+                      <div
+                        key={ex.id}
+                        className="col-span-2 space-y-2 rounded-xl border border-slate-300 bg-slate-50 p-3 text-left sm:col-span-1"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                            {editFile ? (
+                              <img
+                                src={URL.createObjectURL(editFile)}
+                                alt={editName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : ex.imageUrl ? (
+                              <img src={ex.imageUrl} alt={ex.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Sin imagen</span>
+                            )}
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setEditFile(e.target.files?.[0] ?? null)}
+                            className="min-w-0 flex-1 text-xs text-slate-600"
                           />
-                        ) : (
-                          <span className="text-xs text-slate-400">Sin imagen</span>
-                        )}
+                        </div>
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Nombre"
+                          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500"
+                        />
+                        <input
+                          value={editCategory}
+                          onChange={(e) => setEditCategory(e.target.value)}
+                          placeholder="Grupo muscular (opcional)"
+                          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500"
+                        />
+                        {editError && <p className="text-xs text-red-600">{editError}</p>}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEdit(ex)}
+                            disabled={editSaving}
+                            className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                          >
+                            {editSaving ? 'Guardando…' : 'Guardar'}
+                          </button>
+                        </div>
                       </div>
-                      <p className="truncate text-sm font-medium text-slate-800">{ex.name}</p>
-                    </div>
-                  ))}
+                    ) : (
+                      <div
+                        key={ex.id}
+                        className="group relative rounded-xl border border-slate-100 p-3 text-center"
+                      >
+                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(ex)}
+                            aria-label={`Editar ${ex.name}`}
+                            className="rounded-full bg-white/90 p-1.5 text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExercise(ex)}
+                            disabled={deletingId === ex.id}
+                            aria-label={`Eliminar ${ex.name}`}
+                            className="rounded-full bg-white/90 p-1.5 text-red-500 shadow-sm hover:bg-red-50 disabled:opacity-60"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="mb-2 flex h-20 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                          {ex.imageUrl ? (
+                            <img
+                              src={ex.imageUrl}
+                              alt={ex.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs text-slate-400">Sin imagen</span>
+                          )}
+                        </div>
+                        <p className="truncate text-sm font-medium text-slate-800">{ex.name}</p>
+                      </div>
+                    ),
+                  )}
                 </div>
               </div>
             ))}

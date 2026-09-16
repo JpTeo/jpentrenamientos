@@ -213,18 +213,16 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
                         }
                         onRepeatFirst={() => repeatCircuitExerciseValues(index, exIndex)}
                       />
-                      {ex.mode === 'time' && (
-                        <ValuesRow
-                          title="Descanso por ronda"
-                          values={ex.rests}
-                          label="Ronda"
-                          placeholder="10s"
-                          onChange={(setIndex, value) =>
-                            updateCircuitExerciseRest(index, exIndex, setIndex, value)
-                          }
-                          onRepeatFirst={() => repeatCircuitExerciseRests(index, exIndex)}
-                        />
-                      )}
+                      <ValuesRow
+                        title="Descanso por ronda"
+                        values={ex.rests}
+                        label="Ronda"
+                        placeholder="10s"
+                        onChange={(setIndex, value) =>
+                          updateCircuitExerciseRest(index, exIndex, setIndex, value)
+                        }
+                        onRepeatFirst={() => repeatCircuitExerciseRests(index, exIndex)}
+                      />
                       <ValuesRow
                         title="Peso por ronda"
                         values={ex.weights}
@@ -329,16 +327,14 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
                   onChange={(setIndex, value) => updateExerciseValue(index, setIndex, value)}
                   onRepeatFirst={() => repeatExerciseValues(index)}
                 />
-                {block.mode === 'time' && (
-                  <ValuesRow
-                    title="Descanso por serie"
-                    values={block.rests}
-                    label="Serie"
-                    placeholder="10s"
-                    onChange={(setIndex, value) => updateExerciseRest(index, setIndex, value)}
-                    onRepeatFirst={() => repeatExerciseRests(index)}
-                  />
-                )}
+                <ValuesRow
+                  title="Descanso por serie"
+                  values={block.rests}
+                  label="Serie"
+                  placeholder="10s"
+                  onChange={(setIndex, value) => updateExerciseRest(index, setIndex, value)}
+                  onRepeatFirst={() => repeatExerciseRests(index)}
+                />
                 <ValuesRow
                   title="Peso por serie"
                   values={block.weights}
