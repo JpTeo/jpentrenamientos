@@ -417,10 +417,17 @@ export default function PlanDetail() {
         completionCount: increment(1),
         lastCompletedAt: serverTimestamp(),
       }).catch(() => {})
+      addDoc(collection(db, 'planCompletions'), {
+        studentId: user.uid,
+        coachId: plan.coachId,
+        planId: plan.id,
+        planTitle: plan.title ?? '',
+        completedAt: serverTimestamp(),
+      }).catch(() => {})
     } else if (completed.size < total && completionRecorded) {
       setCompletionRecorded(false)
     }
-  }, [completed, plan, completionRecorded])
+  }, [completed, plan, completionRecorded, user.uid])
 
   async function handleSaveWeights(blockIndex, exIndex, newWeights) {
     const blocks = (plan.items || []).map(normalizeItem)

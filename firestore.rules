@@ -59,5 +59,21 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.studentId == request.auth.uid;
       allow update: if false;
     }
+
+    match /planCompletions/{completionId} {
+      allow read: if isSignedIn()
+        && (resource.data.studentId == request.auth.uid || resource.data.coachId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn() && resource.data.studentId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.studentId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['activity', 'durationMinutes', 'intensity']);
+      allow delete: if isSignedIn() && resource.data.studentId == request.auth.uid;
+    }
   }
 }
