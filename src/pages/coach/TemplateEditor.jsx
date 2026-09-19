@@ -7,16 +7,16 @@ import {
   onSnapshot,
   doc,
   getDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { emptyExercise, normalizeItem } from '../../lib/planItems'
-import { usePlanItems } from '../../hooks/usePlanItems'
-import PlanItemsEditor from '../../components/PlanItemsEditor'
+import DayEditor, { DayTabs } from '../../components/DayEditor'
+import { useDays } from '../../hooks/useDays'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500'
@@ -30,11 +30,15 @@ export default function TemplateEditor() {
 
   const [exercises, setExercises] = useState([])
   const [title, setTitle] = useState('')
+  const [editItems, setEditItems] = useState(null)
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const planItems = usePlanItems([emptyExercise()])
+  // Creating a template can span several days; each day is saved as its own
+  // template titled "<title> - Día N", so assigning them to a student later
+  // yields plans the student app groups together.
+  const { days, activeKey, setActiveKey, addDay, removeDay, dayRefs, collectItems } = useDays()
 
   useEffect(() => {
     const q = query(collection(db, 'exercises'), where('createdBy', '==', user.uid))
@@ -52,11 +56,10 @@ export default function TemplateEditor() {
       if (snap.exists()) {
         const data = snap.data()
         setTitle(data.title ?? '')
-        planItems.setItems(data.items?.length ? data.items.map(normalizeItem) : [emptyExercise()])
+        setEditItems(data.items?.length ? data.items.map(normalizeItem) : [emptyExercise()])
       }
       setLoading(false)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditing])
 
   const exerciseById = useMemo(() => {
@@ -82,28 +85,38 @@ export default function TemplateEditor() {
       setError('Completá el título de la plantilla.')
       return
     }
-    const cleanItems = planItems.buildCleanItems()
-    if (cleanItems.length === 0) {
-      setError('Agregá al menos un ejercicio o circuito.')
+
+    const { itemsPerDay, emptyIndex } = collectItems()
+    if (emptyIndex !== -1) {
+      setError(
+        days.length > 1
+          ? `El Día ${emptyIndex + 1} no tiene ejercicios. Agregá al menos uno o quitá ese día.`
+          : 'Agregá al menos un ejercicio o circuito.',
+      )
       return
     }
 
+    const baseTitle = title.trim()
     setSaving(true)
     try {
       if (isEditing) {
         await updateDoc(doc(db, 'planTemplates', id), {
-          title: title.trim(),
-          items: cleanItems,
+          title: baseTitle,
+          items: itemsPerDay[0],
           updatedAt: serverTimestamp(),
         })
       } else {
-        await addDoc(collection(db, 'planTemplates'), {
-          title: title.trim(),
-          coachId: user.uid,
-          items: cleanItems,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+        const batch = writeBatch(db)
+        itemsPerDay.forEach((items, i) => {
+          batch.set(doc(collection(db, 'planTemplates')), {
+            title: days.length > 1 ? `${baseTitle} - Día ${i + 1}` : baseTitle,
+            coachId: user.uid,
+            items,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          })
         })
+        await batch.commit()
       }
       navigate('/coach/plantillas')
     } catch {
@@ -129,6 +142,8 @@ export default function TemplateEditor() {
     return <p className="text-sm text-slate-500">Cargando…</p>
   }
 
+  const multiDay = days.length > 1
+
   return (
     <form onSubmit={handleSave} className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -144,9 +159,36 @@ export default function TemplateEditor() {
             className={inputClass}
           />
         </div>
+        {!isEditing && multiDay && (
+          <p className="mt-3 text-xs text-slate-500">
+            Cada día se guarda como una plantilla «{title.trim() || 'Título'} - Día N». Al
+            asignarlas al mismo alumno, las ve agrupadas dentro de la misma planificación.
+          </p>
+        )}
       </div>
 
-      <PlanItemsEditor planItems={planItems} exerciseGroups={exerciseGroups} exerciseById={exerciseById} />
+      {!isEditing && (
+        <DayTabs
+          days={days}
+          activeKey={activeKey}
+          onSelect={setActiveKey}
+          onAdd={addDay}
+          onRemove={removeDay}
+        />
+      )}
+
+      {days.map((day) => (
+        <div key={day.key} className={activeKey === day.key ? '' : 'hidden'}>
+          <DayEditor
+            ref={(handle) => {
+              dayRefs.current[day.key] = handle
+            }}
+            initialItems={isEditing ? editItems : undefined}
+            exerciseGroups={exerciseGroups}
+            exerciseById={exerciseById}
+          />
+        </div>
+      ))}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -168,7 +210,11 @@ export default function TemplateEditor() {
           disabled={saving}
           className="rounded-lg bg-slate-900 px-5 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {saving ? 'Guardando…' : 'Guardar plantilla'}
+          {saving
+            ? 'Guardando…'
+            : multiDay
+              ? `Guardar plantilla (${days.length} días)`
+              : 'Guardar plantilla'}
         </button>
       </div>
     </form>

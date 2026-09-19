@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   collection,
@@ -12,31 +12,15 @@ import {
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore'
-import { Plus } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { emptyExercise, normalizeItem } from '../../lib/planItems'
-import { usePlanItems } from '../../hooks/usePlanItems'
-import PlanItemsEditor from '../../components/PlanItemsEditor'
+import DayEditor, { DayTabs } from '../../components/DayEditor'
+import { useDays } from '../../hooks/useDays'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500'
 const labelClass = 'mb-1 block text-xs font-medium text-slate-500'
-
-// One day's worth of exercises/circuits. Each day owns its own editor state
-// and exposes getCleanItems() to the parent through `ref`, so the parent can
-// collect every day's items at save time without lifting all that state up.
-function DayEditor({ ref, initialItems, exerciseGroups, exerciseById }) {
-  const planItems = usePlanItems(initialItems)
-  useImperativeHandle(ref, () => ({ getCleanItems: () => planItems.buildCleanItems() }))
-  return (
-    <PlanItemsEditor
-      planItems={planItems}
-      exerciseGroups={exerciseGroups}
-      exerciseById={exerciseById}
-    />
-  )
-}
 
 export default function PlanEditor() {
   const { user } = useAuth()
@@ -55,10 +39,7 @@ export default function PlanEditor() {
 
   // Creating a plan can span several days; each day is saved as its own plan
   // titled "<title> - Día N" (which is how the student app groups them).
-  const [days, setDays] = useState([{ key: 1 }])
-  const [activeKey, setActiveKey] = useState(1)
-  const nextDayKey = useRef(2)
-  const dayRefs = useRef({})
+  const { days, activeKey, setActiveKey, addDay, removeDay, dayRefs, collectItems } = useDays()
 
   useEffect(() => {
     const q = query(
@@ -113,21 +94,6 @@ export default function PlanEditor() {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
   }, [exercises])
 
-  function addDay() {
-    const key = nextDayKey.current++
-    setDays((prev) => [...prev, { key }])
-    setActiveKey(key)
-  }
-
-  function removeDay(key) {
-    if (days.length <= 1) return
-    if (!confirm('¿Quitar este día? Se pierde lo que cargaste en él.')) return
-    const index = days.findIndex((d) => d.key === key)
-    const remaining = days.filter((d) => d.key !== key)
-    setDays(remaining)
-    if (activeKey === key) setActiveKey(remaining[Math.max(0, index - 1)].key)
-  }
-
   async function handleSave(e) {
     e.preventDefault()
     setError('')
@@ -136,10 +102,8 @@ export default function PlanEditor() {
       return
     }
 
-    const itemsPerDay = days.map((d) => dayRefs.current[d.key]?.getCleanItems() ?? [])
-    const emptyIndex = itemsPerDay.findIndex((items) => items.length === 0)
+    const { itemsPerDay, emptyIndex } = collectItems()
     if (emptyIndex !== -1) {
-      setActiveKey(days[emptyIndex].key)
       setError(
         days.length > 1
           ? `El Día ${emptyIndex + 1} no tiene ejercicios. Agregá al menos uno o quitá ese día.`
@@ -238,38 +202,13 @@ export default function PlanEditor() {
       </div>
 
       {!isEditing && (
-        <div className="flex flex-wrap items-center gap-2">
-          {days.map((day, index) => (
-            <button
-              key={day.key}
-              type="button"
-              onClick={() => setActiveKey(day.key)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                activeKey === day.key
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white text-slate-600 shadow-sm hover:bg-slate-100'
-              }`}
-            >
-              Día {index + 1}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={addDay}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-          >
-            <Plus className="size-4" aria-hidden="true" /> Agregar día
-          </button>
-          {multiDay && (
-            <button
-              type="button"
-              onClick={() => removeDay(activeKey)}
-              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
-            >
-              Quitar este día
-            </button>
-          )}
-        </div>
+        <DayTabs
+          days={days}
+          activeKey={activeKey}
+          onSelect={setActiveKey}
+          onAdd={addDay}
+          onRemove={removeDay}
+        />
       )}
 
       {days.map((day) => (
