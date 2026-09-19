@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   collection,
@@ -7,11 +7,12 @@ import {
   onSnapshot,
   doc,
   getDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   serverTimestamp,
 } from 'firebase/firestore'
+import { Plus } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { emptyExercise, normalizeItem } from '../../lib/planItems'
@@ -21,6 +22,21 @@ import PlanItemsEditor from '../../components/PlanItemsEditor'
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500'
 const labelClass = 'mb-1 block text-xs font-medium text-slate-500'
+
+// One day's worth of exercises/circuits. Each day owns its own editor state
+// and exposes getCleanItems() to the parent through `ref`, so the parent can
+// collect every day's items at save time without lifting all that state up.
+function DayEditor({ ref, initialItems, exerciseGroups, exerciseById }) {
+  const planItems = usePlanItems(initialItems)
+  useImperativeHandle(ref, () => ({ getCleanItems: () => planItems.buildCleanItems() }))
+  return (
+    <PlanItemsEditor
+      planItems={planItems}
+      exerciseGroups={exerciseGroups}
+      exerciseById={exerciseById}
+    />
+  )
+}
 
 export default function PlanEditor() {
   const { user } = useAuth()
@@ -32,11 +48,17 @@ export default function PlanEditor() {
   const [exercises, setExercises] = useState([])
   const [title, setTitle] = useState('')
   const [studentId, setStudentId] = useState('')
+  const [editItems, setEditItems] = useState(null)
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const planItems = usePlanItems([emptyExercise()])
+  // Creating a plan can span several days; each day is saved as its own plan
+  // titled "<title> - Día N" (which is how the student app groups them).
+  const [days, setDays] = useState([{ key: 1 }])
+  const [activeKey, setActiveKey] = useState(1)
+  const nextDayKey = useRef(2)
+  const dayRefs = useRef({})
 
   useEffect(() => {
     const q = query(
@@ -69,11 +91,10 @@ export default function PlanEditor() {
         const data = snap.data()
         setTitle(data.title ?? '')
         setStudentId(data.studentId ?? '')
-        planItems.setItems(data.items?.length ? data.items.map(normalizeItem) : [emptyExercise()])
+        setEditItems(data.items?.length ? data.items.map(normalizeItem) : [emptyExercise()])
       }
       setLoading(false)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditing])
 
   const exerciseById = useMemo(() => {
@@ -92,6 +113,21 @@ export default function PlanEditor() {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
   }, [exercises])
 
+  function addDay() {
+    const key = nextDayKey.current++
+    setDays((prev) => [...prev, { key }])
+    setActiveKey(key)
+  }
+
+  function removeDay(key) {
+    if (days.length <= 1) return
+    if (!confirm('¿Quitar este día? Se pierde lo que cargaste en él.')) return
+    const index = days.findIndex((d) => d.key === key)
+    const remaining = days.filter((d) => d.key !== key)
+    setDays(remaining)
+    if (activeKey === key) setActiveKey(remaining[Math.max(0, index - 1)].key)
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setError('')
@@ -99,33 +135,45 @@ export default function PlanEditor() {
       setError('Completá el título y elegí un alumno.')
       return
     }
-    const cleanItems = planItems.buildCleanItems()
-    if (cleanItems.length === 0) {
-      setError('Agregá al menos un ejercicio o circuito.')
+
+    const itemsPerDay = days.map((d) => dayRefs.current[d.key]?.getCleanItems() ?? [])
+    const emptyIndex = itemsPerDay.findIndex((items) => items.length === 0)
+    if (emptyIndex !== -1) {
+      setActiveKey(days[emptyIndex].key)
+      setError(
+        days.length > 1
+          ? `El Día ${emptyIndex + 1} no tiene ejercicios. Agregá al menos uno o quitá ese día.`
+          : 'Agregá al menos un ejercicio o circuito.',
+      )
       return
     }
 
     const student = students.find((s) => s.id === studentId)
+    const baseTitle = title.trim()
     setSaving(true)
     try {
       if (isEditing) {
         await updateDoc(doc(db, 'plans', id), {
-          title: title.trim(),
+          title: baseTitle,
           studentId,
           studentName: student?.name ?? '',
-          items: cleanItems,
+          items: itemsPerDay[0],
           updatedAt: serverTimestamp(),
         })
       } else {
-        await addDoc(collection(db, 'plans'), {
-          title: title.trim(),
-          studentId,
-          studentName: student?.name ?? '',
-          coachId: user.uid,
-          items: cleanItems,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+        const batch = writeBatch(db)
+        itemsPerDay.forEach((items, i) => {
+          batch.set(doc(collection(db, 'plans')), {
+            title: days.length > 1 ? `${baseTitle} - Día ${i + 1}` : baseTitle,
+            studentId,
+            studentName: student?.name ?? '',
+            coachId: user.uid,
+            items,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          })
         })
+        await batch.commit()
       }
       navigate('/coach/planificaciones')
     } catch {
@@ -151,6 +199,8 @@ export default function PlanEditor() {
     return <p className="text-sm text-slate-500">Cargando…</p>
   }
 
+  const multiDay = days.length > 1
+
   return (
     <form onSubmit={handleSave} className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -163,7 +213,7 @@ export default function PlanEditor() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Semana 1 - Full body"
+              placeholder="Full body semana 1"
               className={inputClass}
             />
           </div>
@@ -179,9 +229,61 @@ export default function PlanEditor() {
             </select>
           </div>
         </div>
+        {!isEditing && multiDay && (
+          <p className="mt-3 text-xs text-slate-500">
+            Cada día se guarda como «{title.trim() || 'Título'} - Día N» y el alumno los ve
+            agrupados dentro de la misma planificación.
+          </p>
+        )}
       </div>
 
-      <PlanItemsEditor planItems={planItems} exerciseGroups={exerciseGroups} exerciseById={exerciseById} />
+      {!isEditing && (
+        <div className="flex flex-wrap items-center gap-2">
+          {days.map((day, index) => (
+            <button
+              key={day.key}
+              type="button"
+              onClick={() => setActiveKey(day.key)}
+              className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                activeKey === day.key
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-white text-slate-600 shadow-sm hover:bg-slate-100'
+              }`}
+            >
+              Día {index + 1}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={addDay}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+          >
+            <Plus className="size-4" aria-hidden="true" /> Agregar día
+          </button>
+          {multiDay && (
+            <button
+              type="button"
+              onClick={() => removeDay(activeKey)}
+              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
+            >
+              Quitar este día
+            </button>
+          )}
+        </div>
+      )}
+
+      {days.map((day) => (
+        <div key={day.key} className={activeKey === day.key ? '' : 'hidden'}>
+          <DayEditor
+            ref={(handle) => {
+              dayRefs.current[day.key] = handle
+            }}
+            initialItems={isEditing ? editItems : undefined}
+            exerciseGroups={exerciseGroups}
+            exerciseById={exerciseById}
+          />
+        </div>
+      ))}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -203,7 +305,11 @@ export default function PlanEditor() {
           disabled={saving}
           className="rounded-lg bg-slate-900 px-5 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {saving ? 'Guardando…' : 'Guardar planificación'}
+          {saving
+            ? 'Guardando…'
+            : multiDay
+              ? `Guardar planificación (${days.length} días)`
+              : 'Guardar planificación'}
         </button>
       </div>
     </form>
