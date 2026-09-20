@@ -23,7 +23,9 @@ const EXAMPLE_TEXT = `Día 1
 Circuito 1
 Abdominales bisagra con disco de 5kg 30x3
 Plancha alta tocando Pie contrario 20x3
-Sentadilla con barra 12-10-8`
+Sentadilla con barra 12-10-8
+Plancha 30”x3
+Cinta 10 min (pendiente 15 velocidad 8)`
 
 function chunk(list, size) {
   const chunks = []
@@ -208,7 +210,8 @@ export default function ImportTemplates() {
           <div className="space-y-3">
             <p className="text-sm text-slate-500">
               Pegá uno o varios días, con "Día N", "Circuito N" y cada ejercicio con sus
-              repeticiones (ej: 12-10-8 o 20x3). Ejemplo:
+              repeticiones (12-10-8 o 20x3), tiempo (30" o 10 min) y comentarios entre paréntesis.
+              Ejemplo:
             </p>
             <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
               {EXAMPLE_TEXT}
@@ -271,6 +274,9 @@ export default function ImportTemplates() {
                                   </span>
                                 )}
                                 <span className="text-slate-400"> · {ex.values.join('-')}</span>
+                                {ex.notes && (
+                                  <span className="text-slate-400 italic"> ({ex.notes})</span>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -284,6 +290,9 @@ export default function ImportTemplates() {
                             </span>
                           )}
                           <span className="text-slate-400"> · {block.values.join('-')}</span>
+                          {block.notes && (
+                            <span className="text-slate-400 italic"> ({block.notes})</span>
+                          )}
                         </div>
                       )}
                     </div>
