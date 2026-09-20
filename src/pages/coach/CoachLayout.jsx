@@ -11,16 +11,31 @@ const linkClass = ({ isActive }) =>
 
 export default function CoachLayout() {
   const { user, profile, signOut } = useAuth()
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadComments, setUnreadComments] = useState(0)
+  const [unreadCompletions, setUnreadCompletions] = useState(0)
+  const unreadCount = unreadComments + unreadCompletions
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'exerciseComments'),
-      where('coachId', '==', user.uid),
-      where('read', '==', false),
+    const unsubComments = onSnapshot(
+      query(
+        collection(db, 'exerciseComments'),
+        where('coachId', '==', user.uid),
+        where('read', '==', false),
+      ),
+      (snap) => setUnreadComments(snap.size),
     )
-    const unsub = onSnapshot(q, (snap) => setUnreadCount(snap.size))
-    return unsub
+    const unsubCompletions = onSnapshot(
+      query(
+        collection(db, 'planCompletions'),
+        where('coachId', '==', user.uid),
+        where('read', '==', false),
+      ),
+      (snap) => setUnreadCompletions(snap.size),
+    )
+    return () => {
+      unsubComments()
+      unsubCompletions()
+    }
   }, [user.uid])
 
   return (
