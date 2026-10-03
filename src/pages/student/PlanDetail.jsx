@@ -13,8 +13,9 @@ import { Check, ChevronLeft } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { normalizeItem } from '../../lib/planItems'
+import { parseRestSeconds } from '../../lib/restTime'
 import { useWorkoutProgress } from '../../hooks/useWorkoutProgress'
-import { CompleteButton, ExerciseCard, RestBadge, RestTimer } from '../../components/WorkoutParts'
+import { CircuitTimer, CompleteButton, ExerciseCard, RestBadge, RestTimer } from '../../components/WorkoutParts'
 
 function formatDate(ts) {
   if (!ts?.seconds) return ''
@@ -236,6 +237,14 @@ export default function PlanDetail() {
               </div>
               {block.notes && <p className="mt-4 text-sm text-muted-foreground">{block.notes}</p>}
               {block.rest && <RestBadge rest={block.rest} />}
+              {block.exercises[0]?.mode === 'time' && parseRestSeconds(block.exercises[0]?.values?.[0]) && (
+                <CircuitTimer
+                  workSeconds={parseRestSeconds(block.exercises[0].values[0])}
+                  restSeconds={parseRestSeconds(block.rest) || 0}
+                  rounds={Number(block.rounds) || 1}
+                  label={block.name || 'Circuito por tiempo'}
+                />
+              )}
               <CompleteButton
                 completed={completed.has(String(index))}
                 onToggle={() => toggleComplete(String(index))}

@@ -90,13 +90,64 @@ export function RestTimer({ seconds, label, onClose }) {
       <p className="text-xs font-medium tracking-[0.3em] text-white/60 uppercase">Descanso</p>
       {label && <p className="text-lg font-medium">{label}</p>}
       <p className="font-mono text-7xl font-bold tabular-nums">{formatSeconds(remaining)}</p>
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-full border border-white/30 px-5 py-2 text-sm font-medium hover:bg-white/10"
-      >
-        Saltar
-      </button>
+      <button type="button" onClick={onClose} className="rounded-full border border-white/30 px-5 py-2 text-sm font-medium hover:bg-white/10">Saltar</button>
+    </div>
+  )
+}
+
+export function CircuitTimer({ workSeconds, restSeconds, rounds, label }) {
+  const [running, setRunning] = useState(false)
+  const [phase, setPhase] = useState('work')
+  const [remaining, setRemaining] = useState(workSeconds)
+  const [round, setRound] = useState(1)
+
+  function reset() {
+    setRunning(false)
+    setPhase('work')
+    setRemaining(workSeconds)
+    setRound(1)
+  }
+
+  useEffect(() => {
+    if (!running) return undefined
+    if (remaining <= 0) {
+      if (phase === 'work' && restSeconds > 0) {
+        setPhase('rest')
+        setRemaining(restSeconds)
+      } else if (round < rounds) {
+        setRound((value) => value + 1)
+        setPhase('work')
+        setRemaining(workSeconds)
+      } else {
+        setRunning(false)
+        setPhase('work')
+        setRemaining(workSeconds)
+        setRound(1)
+      }
+      return undefined
+    }
+    const timer = setTimeout(() => setRemaining((value) => value - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [running, remaining, phase, round, restSeconds, rounds, workSeconds])
+
+  const isRest = phase === 'rest'
+  return (
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-background">
+      <div className={`p-5 text-center transition-colors ${isRest ? 'bg-red-500/15' : 'bg-emerald-500/15'}`}>
+        <p className={`text-xs font-semibold tracking-[0.25em] uppercase ${isRest ? 'text-red-400' : 'text-emerald-400'}`}>
+          {isRest ? 'Descanso' : 'Entrenamiento'} · Ronda {round}/{rounds}
+        </p>
+        <p className={`mt-2 font-mono text-6xl font-bold tabular-nums sm:text-7xl ${isRest ? 'text-red-400' : 'text-emerald-400'}`} aria-live="polite">
+          {formatSeconds(remaining)}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+      </div>
+      <div className="flex gap-2 p-3">
+        <button type="button" onClick={() => setRunning((value) => !value)} className={`flex-1 rounded-xl py-2.5 text-sm font-semibold ${isRest ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+          {running ? 'Pausar' : remaining === 0 ? 'Reiniciar' : 'Comenzar'}
+        </button>
+        <button type="button" onClick={reset} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted">Reiniciar</button>
+      </div>
     </div>
   )
 }
