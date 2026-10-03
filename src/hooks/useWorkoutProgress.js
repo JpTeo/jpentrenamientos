@@ -18,6 +18,20 @@ export function useWorkoutProgress() {
     })
   }
 
+  // Marks a whole circuit as done (every round of every exercise checked, and
+  // the circuit itself complete) — used when the guided timer finishes. Unlike
+  // toggleSet, this never starts the rest timer.
+  function markCircuitDone(blockIndex, block) {
+    setCheckedSets((prev) => {
+      const next = { ...prev }
+      block.exercises.forEach((_, j) => {
+        next[`b${blockIndex}-e${j}`] = Array.from({ length: block.rounds }, () => true)
+      })
+      return next
+    })
+    setCompleted((prev) => new Set(prev).add(String(blockIndex)))
+  }
+
   function startTimer(seconds, label) {
     setTimer({ id: Date.now(), seconds, label })
   }
@@ -59,5 +73,6 @@ export function useWorkoutProgress() {
     closeTimer: () => setTimer(null),
     toggleComplete,
     toggleSet,
+    markCircuitDone,
   }
 }

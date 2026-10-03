@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/useAuth'
 import { normalizeItem } from '../../lib/planItems'
 import { useWorkoutProgress } from '../../hooks/useWorkoutProgress'
 import { CompleteButton, ExerciseCard, RestBadge, RestTimer } from '../../components/WorkoutParts'
+import { TimedCircuitStart } from '../../components/CircuitRunner'
 
 function formatDate(ts) {
   if (!ts?.seconds) return ''
@@ -97,8 +98,15 @@ export default function PlanDetail() {
   const { user, profile } = useAuth()
   const [plan, setPlan] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { completed, checkedSets, timer, closeTimer, toggleComplete, toggleSet } =
-    useWorkoutProgress()
+  const {
+    completed,
+    checkedSets,
+    timer,
+    closeTimer,
+    toggleComplete,
+    toggleSet,
+    markCircuitDone,
+  } = useWorkoutProgress()
   const [showCompletion, setShowCompletion] = useState(false)
   const [completionRecorded, setCompletionRecorded] = useState(false)
 
@@ -220,6 +228,7 @@ export default function PlanDetail() {
                 <p className="font-semibold">{block.name || 'Circuito'}</p>
                 <span className="text-sm text-muted-foreground">{block.rounds} rondas</span>
               </div>
+              <TimedCircuitStart block={block} onFinish={() => markCircuitDone(index, block)} />
               <div className="flex flex-col gap-4">
                 {block.exercises.map((ex, exIndex) => (
                   <ExerciseCard

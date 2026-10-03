@@ -11,6 +11,7 @@ import {
 import { db } from '../../firebase/config'
 import { createStudentAccount } from '../../firebase/createStudent'
 import { useAuth } from '../../contexts/useAuth'
+import { describeProfile } from '../../lib/studentProfile'
 
 function generatePassword() {
   return Math.random().toString(36).slice(-8)
@@ -48,6 +49,11 @@ function StudentRow({ student, onDelete }) {
       <div>
         <p className="font-medium text-slate-900">{student.name}</p>
         <p className="text-sm text-slate-500">{student.email}</p>
+        {student.onboardingDone ? (
+          <p className="mt-0.5 text-sm text-slate-600">{describeProfile(student)}</p>
+        ) : (
+          <p className="mt-0.5 text-xs text-amber-600">Todavía no completó sus datos</p>
+        )}
         {student.tempPassword && (
           <p className="mt-0.5 font-mono text-sm text-slate-500">
             {showPassword ? student.tempPassword : '••••••••'}{' '}

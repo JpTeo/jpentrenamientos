@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import OnboardingForm from '../../components/OnboardingForm'
 import { Dumbbell, Sparkles, Target, Trophy, Weight } from 'lucide-react'
 import { useAuth } from '../../contexts/useAuth'
 
@@ -22,7 +24,11 @@ function NavItem({ to, icon: Icon, label }) {
 }
 
 export default function StudentLayout() {
-  const { profile, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  // The first-login questionnaire shows until it's filled in; "más tarde"
+  // only hides it for this visit, so it never locks anyone out of the app.
+  const [onboardingSkipped, setOnboardingSkipped] = useState(false)
+  const needsOnboarding = Boolean(profile) && !profile.onboardingDone && !onboardingSkipped
   const initials = (profile?.name || '?')
     .split(' ')
     .map((p) => p[0])
@@ -87,7 +93,15 @@ export default function StudentLayout() {
             </div>
           </header>
 
-          <Outlet />
+          {needsOnboarding ? (
+            <OnboardingForm
+              uid={user.uid}
+              name={profile.name}
+              onSkip={() => setOnboardingSkipped(true)}
+            />
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>

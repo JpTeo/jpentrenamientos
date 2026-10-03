@@ -26,7 +26,10 @@ service cloud.firestore {
         && request.resource.data.role == 'student'
         && request.resource.data.createdBy == request.auth.uid;
       allow delete: if isCoach() && resource.data.createdBy == request.auth.uid;
-      allow update: if false;
+      // A student can only fill in their own first-login questionnaire.
+      allow update: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['birthDate', 'heightCm', 'weightKg', 'onboardingDone', 'onboardingAt']);
     }
 
     match /exercises/{exerciseId} {
