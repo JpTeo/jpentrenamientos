@@ -5,7 +5,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 
 const linkClass = ({ isActive }) =>
-  `rounded-lg px-3 py-2 text-sm font-medium ${
+  `shrink-0 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${
     isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`
 
@@ -58,7 +58,7 @@ export default function CoachLayout() {
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-4xl gap-1 px-4 pb-3">
+        <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 pb-3">
           <NavLink to="/coach/plantillas" className={linkClass}>
             Plantillas
           </NavLink>
@@ -70,6 +70,9 @@ export default function CoachLayout() {
           </NavLink>
           <NavLink to="/coach/ejercicios" className={linkClass}>
             Ejercicios
+          </NavLink>
+          <NavLink to="/coach/desafios" className={linkClass}>
+            Desafíos
           </NavLink>
           <NavLink to="/coach/mensajes" className={linkClass}>
             <span className="inline-flex items-center gap-1.5">

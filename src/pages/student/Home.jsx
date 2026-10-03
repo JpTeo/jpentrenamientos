@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/useAuth'
 import { groupPlansByTitle } from '../../lib/planGroups'
 import { currentWeekDays, toIsoDate, todayIso } from '../../lib/weekActivity'
 import { normalizeName } from '../../lib/normalizeName'
+import { pointsLabel, totalPoints } from '../../lib/challenges'
 
 // No tracking a real session length for assigned workouts, so a completed
 // plan contributes this many minutes to the day's bar — just enough to make
@@ -69,6 +70,7 @@ export default function Home() {
   const [recordCount, setRecordCount] = useState(0)
   const [completions, setCompletions] = useState([])
   const [activities, setActivities] = useState([])
+  const [challengePoints, setChallengePoints] = useState(0)
   const [formDate, setFormDate] = useState(null)
   const [activityForm, setActivityForm] = useState(emptyActivityForm)
   const [editingActivityId, setEditingActivityId] = useState(null)
@@ -107,6 +109,14 @@ export default function Home() {
     const q = query(collection(db, 'activityLogs'), where('studentId', '==', user.uid))
     const unsub = onSnapshot(q, (snap) => {
       setActivities(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    })
+    return unsub
+  }, [user.uid])
+
+  useEffect(() => {
+    const q = query(collection(db, 'challengeCompletions'), where('studentId', '==', user.uid))
+    const unsub = onSnapshot(q, (snap) => {
+      setChallengePoints(totalPoints(snap.docs.map((d) => d.data())))
     })
     return unsub
   }, [user.uid])
@@ -492,6 +502,26 @@ export default function Home() {
             <p className="text-2xl font-semibold">Pesos máximos</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {recordCount > 0 ? `${recordCount} marcas registradas` : 'Registrá tus marcas'}
+            </p>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate('/alumno/desafios')}
+          className="group flex min-h-32 flex-col justify-between rounded-2xl border border-border bg-card p-6 text-left transition-transform hover:-translate-y-1 hover:bg-muted sm:col-span-2"
+        >
+          <div className="flex items-start justify-between">
+            <Trophy className="size-6 text-primary" aria-hidden="true" />
+            <ArrowRight
+              className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold">Desafíos</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {challengePoints > 0
+                ? `Sumaste ${pointsLabel(challengePoints)}`
+                : 'Completá desafíos y sumá puntos'}
             </p>
           </div>
         </button>

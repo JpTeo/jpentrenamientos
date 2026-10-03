@@ -15,6 +15,11 @@ service cloud.firestore {
       return isSignedIn() && myRole() == 'coach';
     }
 
+    // For students: the uid of the coach who created their account.
+    function myCoachId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.createdBy;
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isCoach());
       allow create: if isCoach()
@@ -67,6 +72,30 @@ service cloud.firestore {
       allow update: if isCoach() && resource.data.coachId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if false;
+    }
+
+    // Challenges the coach creates; students see their own coach's.
+    match /challenges/{challengeId} {
+      allow read: if isSignedIn()
+        && (resource.data.coachId == request.auth.uid || resource.data.coachId == myCoachId());
+      allow create: if isCoach() && request.resource.data.coachId == request.auth.uid;
+      allow update, delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
+    // One doc per (challenge, student) — the id enforces "once per student".
+    // The points must match the challenge's current points and it must be
+    // active, so a student can't award themselves arbitrary points.
+    match /challengeCompletions/{completionId} {
+      allow read: if isSignedIn()
+        && (resource.data.studentId == request.auth.uid || resource.data.coachId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && completionId == request.resource.data.challengeId + '_' + request.auth.uid
+        && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.active == true
+        && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.points == request.resource.data.points
+        && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.coachId == request.resource.data.coachId;
+      allow update: if false;
+      allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
     }
 
     match /activityLogs/{logId} {

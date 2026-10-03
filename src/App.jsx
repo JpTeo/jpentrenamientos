@@ -11,10 +11,14 @@ import Templates from './pages/coach/Templates'
 import TemplateEditor from './pages/coach/TemplateEditor'
 import ImportTemplates from './pages/coach/ImportTemplates'
 import Messages from './pages/coach/Messages'
+import Challenges from './pages/coach/Challenges'
+import ChallengeEditor from './pages/coach/ChallengeEditor'
 import StudentLayout from './pages/student/StudentLayout'
 import Home from './pages/student/Home'
 import MyPlans from './pages/student/MyPlans'
 import MyPlanGroup from './pages/student/MyPlanGroup'
+import MyChallenges from './pages/student/MyChallenges'
+import ChallengeDetail from './pages/student/ChallengeDetail'
 import PlanDetail from './pages/student/PlanDetail'
 import Maxes from './pages/student/Maxes'
 
@@ -44,6 +48,9 @@ export default function App() {
             <Route path="alumnos" element={<Students />} />
             <Route path="ejercicios" element={<Exercises />} />
             <Route path="mensajes" element={<Messages />} />
+            <Route path="desafios" element={<Challenges />} />
+            <Route path="desafios/nueva" element={<ChallengeEditor />} />
+            <Route path="desafios/:id" element={<ChallengeEditor />} />
           </Route>
 
           <Route
@@ -58,6 +65,8 @@ export default function App() {
             <Route path="planificaciones" element={<MyPlans />} />
             <Route path="planificaciones/grupo/:groupKey" element={<MyPlanGroup />} />
             <Route path="planificaciones/:id" element={<PlanDetail />} />
+            <Route path="desafios" element={<MyChallenges />} />
+            <Route path="desafios/:id" element={<ChallengeDetail />} />
             <Route path="marcas" element={<Maxes />} />
           </Route>
 

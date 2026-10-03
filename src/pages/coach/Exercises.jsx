@@ -12,7 +12,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Search, Trash2, X } from 'lucide-react'
 import { db, storage } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { normalizeName } from '../../lib/normalizeName'
@@ -84,6 +84,7 @@ export default function Exercises() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'exercises'), where('createdBy', '==', user.uid))
@@ -96,15 +97,26 @@ export default function Exercises() {
     return unsub
   }, [user.uid])
 
+  // Matches on name or muscle group, ignoring case and accents. The exercise
+  // being edited always stays visible so it doesn't vanish mid-edit.
+  const visibleExercises = useMemo(() => {
+    const term = normalizeName(search)
+    if (!term) return exercises
+    return exercises.filter(
+      (ex) =>
+        ex.id === editingId || normalizeName(`${ex.name} ${ex.category || ''}`).includes(term),
+    )
+  }, [exercises, search, editingId])
+
   const groups = useMemo(() => {
     const map = {}
-    for (const ex of exercises) {
+    for (const ex of visibleExercises) {
       const key = ex.category || 'Sin categoría'
       if (!map[key]) map[key] = []
       map[key].push(ex)
     }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
-  }, [exercises])
+  }, [visibleExercises])
 
   const existingByName = useMemo(
     () => new Map(exercises.map((ex) => [normalizeName(ex.name), ex])),
@@ -513,7 +525,11 @@ export default function Exercises() {
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Tu librería de ejercicios {exercises.length > 0 && `(${exercises.length})`}
+            Tu librería de ejercicios{' '}
+            {exercises.length > 0 &&
+              (search.trim()
+                ? `(${visibleExercises.length} de ${exercises.length})`
+                : `(${exercises.length})`)}
           </h2>
           {exercises.length > 0 && (
             <button
@@ -527,10 +543,40 @@ export default function Exercises() {
           )}
         </div>
         {deleteAllError && <p className="mb-3 text-sm text-red-600">{deleteAllError}</p>}
+        {exercises.length > 0 && (
+          <div className="relative mb-5">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar ejercicio o grupo muscular…"
+              aria-label="Buscar ejercicio"
+              className="w-full rounded-lg border border-slate-300 py-2 pr-9 pl-9 text-sm outline-none focus:border-slate-500 [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Borrar búsqueda"
+                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
         {loading ? (
           <p className="text-sm text-slate-500">Cargando…</p>
         ) : exercises.length === 0 ? (
           <p className="text-sm text-slate-500">Todavía no agregaste ejercicios.</p>
+        ) : visibleExercises.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No hay ejercicios que coincidan con “{search.trim()}”.
+          </p>
         ) : (
           <div className="space-y-6">
             {groups.map(([groupName, items]) => (

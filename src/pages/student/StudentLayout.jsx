@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Dumbbell, Sparkles, Target, Weight } from 'lucide-react'
+import { Dumbbell, Sparkles, Target, Trophy, Weight } from 'lucide-react'
 import { useAuth } from '../../contexts/useAuth'
 
 function NavItem({ to, icon: Icon, label }) {
@@ -43,6 +43,7 @@ export default function StudentLayout() {
           <div className="mt-14 flex flex-col gap-2">
             <NavItem to="/alumno" icon={Target} label="Resumen" />
             <NavItem to="/alumno/planificaciones" icon={Dumbbell} label="Planificaciones" />
+            <NavItem to="/alumno/desafios" icon={Trophy} label="Desafíos" />
             <NavItem to="/alumno/marcas" icon={Weight} label="Pesos máximos" />
           </div>
           <div className="mt-auto rounded-xl border border-border/60 bg-card p-4">
