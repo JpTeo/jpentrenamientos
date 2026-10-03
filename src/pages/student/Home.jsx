@@ -11,12 +11,26 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
-import { ArrowRight, Dumbbell, Pencil, Plus, Trash2, Trophy, Weight, X } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Dumbbell,
+  Pencil,
+  Plus,
+  Trash2,
+  Trophy,
+  Weight,
+  X,
+} from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { groupPlansByTitle } from '../../lib/planGroups'
-import { currentWeekDays, toIsoDate, todayIso } from '../../lib/weekActivity'
+import { currentWeekDays, toIsoDate, todayIso, weekDaysFor } from '../../lib/weekActivity'
+import { colorForActivity } from '../../lib/activityColors'
 import { normalizeName } from '../../lib/normalizeName'
+import ActivityCalendar from '../../components/ActivityCalendar'
 import { pointsLabel, totalPoints } from '../../lib/challenges'
 
 // No tracking a real session length for assigned workouts, so a completed
@@ -27,35 +41,6 @@ const CHART_HEIGHT = 96
 const QUICK_ACTIVITIES = ['Running', 'Bici', 'HIIT', 'Natación']
 
 const emptyActivityForm = { activity: '', duration: '', intensity: 'Moderada' }
-
-// A few common activities get a fixed color; anything else gets a stable
-// color picked from the fallback pool by hashing its name, so the same
-// custom activity always renders the same way across the week.
-const ACTIVITY_COLORS = {
-  running: 'bg-orange-500',
-  correr: 'bg-orange-500',
-  bici: 'bg-sky-500',
-  bicicleta: 'bg-sky-500',
-  ciclismo: 'bg-sky-500',
-  hiit: 'bg-rose-500',
-  natacion: 'bg-cyan-500',
-}
-const FALLBACK_ACTIVITY_COLORS = [
-  'bg-violet-500',
-  'bg-amber-500',
-  'bg-fuchsia-500',
-  'bg-lime-500',
-  'bg-teal-500',
-  'bg-indigo-500',
-]
-
-function colorForActivity(name) {
-  const key = normalizeName(name)
-  if (ACTIVITY_COLORS[key]) return ACTIVITY_COLORS[key]
-  let hash = 0
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
-  return FALLBACK_ACTIVITY_COLORS[hash % FALLBACK_ACTIVITY_COLORS.length]
-}
 
 function barSegmentHeight(minutes, maxMinutes) {
   if (!minutes) return 0
@@ -121,7 +106,64 @@ export default function Home() {
     return unsub
   }, [user.uid])
 
-  const weekDays = useMemo(() => currentWeekDays(), [])
+  // weekAnchor: any date inside the week being shown (null = current week).
+  const [weekAnchor, setWeekAnchor] = useState(null)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [selectedIso, setSelectedIso] = useState(null)
+  const [calMonth, setCalMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
+
+  const weekDays = useMemo(() => weekDaysFor(weekAnchor), [weekAnchor])
+  const currentMondayIso = useMemo(() => currentWeekDays()[0].iso, [])
+  const viewingCurrentWeek = weekDays[0].iso === currentMondayIso
+  // The calendar highlights the week the bar chart is showing.
+  const shownWeek = useMemo(() => new Set(weekDays.map((d) => d.iso)), [weekDays])
+
+  // Everything the student did, by calendar day, for the month calendar.
+  const dayIndex = useMemo(() => {
+    const index = {}
+    const entryFor = (iso) => (index[iso] ??= { strength: [], activities: [] })
+    for (const c of completions) {
+      if (!c.completedAt?.seconds) continue
+      entryFor(toIsoDate(new Date(c.completedAt.seconds * 1000))).strength.push({
+        id: c.id,
+        planTitle: c.planTitle,
+      })
+    }
+    for (const a of activities) {
+      if (a.date) entryFor(a.date).activities.push(a)
+    }
+    return index
+  }, [completions, activities])
+
+  function shiftWeek(delta) {
+    const monday = new Date(`${weekDays[0].iso}T12:00:00`)
+    monday.setDate(monday.getDate() + 7 * delta)
+    const iso = toIsoDate(monday)
+    setWeekAnchor(iso === currentMondayIso ? null : iso)
+  }
+
+  function shiftMonth(delta) {
+    setCalMonth(({ year, month }) => {
+      const d = new Date(year, month + delta, 1)
+      return { year: d.getFullYear(), month: d.getMonth() }
+    })
+  }
+
+  // Picking a day in the calendar also brings that week into the bar chart.
+  function selectCalendarDay(iso) {
+    setSelectedIso(iso)
+    setWeekAnchor(iso)
+  }
+
+  const weekRangeLabel = (() => {
+    const fmt = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' })
+    const from = new Date(`${weekDays[0].iso}T12:00:00`)
+    const to = new Date(`${weekDays[6].iso}T12:00:00`)
+    return `${fmt.format(from)} – ${fmt.format(to)}`
+  })()
 
   const dayData = useMemo(() => {
     return weekDays.map((day) => {
@@ -247,20 +289,90 @@ export default function Home() {
       </p>
 
       <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="font-mono text-xs tracking-[0.18em] text-accent-foreground uppercase">
               Resumen de la semana
             </p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight">Actividad física</h2>
           </div>
-          <button
-            type="button"
-            onClick={() => openActivityForm(todayIso())}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-          >
-            <Plus className="size-4" aria-hidden="true" /> Agregar entrenamiento
-          </button>
+          {/* On phones both buttons collapse to icon-only squares. */}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCalendarOpen((open) => !open)}
+              aria-expanded={calendarOpen}
+              aria-label="Calendario"
+              title="Calendario"
+              className={`inline-flex size-9 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-colors sm:w-auto sm:px-3 ${
+                calendarOpen
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <CalendarDays className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Calendario</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openActivityForm(todayIso())}
+              aria-label="Agregar entrenamiento"
+              title="Agregar entrenamiento"
+              className="inline-flex size-9 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/80 sm:w-auto sm:px-3"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Agregar entrenamiento</span>
+            </button>
+          </div>
+        </div>
+
+        {calendarOpen && (
+          <ActivityCalendar
+            year={calMonth.year}
+            month={calMonth.month}
+            onMonthChange={shiftMonth}
+            dayIndex={dayIndex}
+            selectedIso={selectedIso}
+            selectedWeek={shownWeek}
+            onSelectDay={selectCalendarDay}
+            onAddForDay={openActivityForm}
+          />
+        )}
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => shiftWeek(-1)}
+              aria-label="Semana anterior"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <ChevronLeft className="size-4" aria-hidden="true" />
+            </button>
+            <span className="min-w-32 text-center font-medium">
+              {viewingCurrentWeek ? 'Esta semana' : weekRangeLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => shiftWeek(1)}
+              aria-label="Semana siguiente"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          {!viewingCurrentWeek && (
+            <button
+              type="button"
+              onClick={() => {
+                setWeekAnchor(null)
+                setSelectedIso(null)
+              }}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Volver a esta semana
+            </button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
