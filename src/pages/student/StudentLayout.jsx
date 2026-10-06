@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '../../firebase/config'
 import OnboardingForm from '../../components/OnboardingForm'
-import { Dumbbell, Sparkles, Target, Trophy, Weight } from 'lucide-react'
+import { Dumbbell, Sparkles, Target, Trophy, Users, Weight } from 'lucide-react'
 import { useAuth } from '../../contexts/useAuth'
 
 function NavItem({ to, icon: Icon, label }) {
@@ -29,6 +31,23 @@ export default function StudentLayout() {
   // only hides it for this visit, so it never locks anyone out of the app.
   const [onboardingSkipped, setOnboardingSkipped] = useState(false)
   const needsOnboarding = Boolean(profile) && !profile.onboardingDone && !onboardingSkipped
+
+  // Keep the student listed in the Comunidad JP directory (just name + coach;
+  // the real profile holds private data that classmates must not see).
+  useEffect(() => {
+    if (!user || !profile?.createdBy) return
+    const ref = doc(db, 'communityProfiles', user.uid)
+    // Reading a missing doc is denied by the rules, so a failed read means
+    // "not there yet".
+    getDoc(ref)
+      .catch(() => null)
+      .then((snap) => {
+        const data = snap?.exists() ? snap.data() : null
+        if (data?.name === profile.name && data?.coachId === profile.createdBy) return
+        return setDoc(ref, { name: profile.name || '', coachId: profile.createdBy })
+      })
+      .catch(() => {})
+  }, [user, profile?.name, profile?.createdBy])
   const initials = (profile?.name || '?')
     .split(' ')
     .map((p) => p[0])
@@ -50,6 +69,7 @@ export default function StudentLayout() {
             <NavItem to="/alumno" icon={Target} label="Resumen" />
             <NavItem to="/alumno/planificaciones" icon={Dumbbell} label="Planificaciones" />
             <NavItem to="/alumno/desafios" icon={Trophy} label="Desafíos" />
+            <NavItem to="/alumno/comunidad" icon={Users} label="Comunidad JP" />
             <NavItem to="/alumno/marcas" icon={Weight} label="Pesos máximos" />
           </div>
           <div className="mt-auto rounded-xl border border-border/60 bg-card p-4">

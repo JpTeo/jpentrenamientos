@@ -6,6 +6,7 @@ import {
   onSnapshot,
   getDocs,
   writeBatch,
+  deleteDoc,
   doc,
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
@@ -98,6 +99,30 @@ export default function Students() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [lastCreated, setLastCreated] = useState(null)
+  // ids already in the Comunidad JP directory (null until first loaded)
+  const [directoryIds, setDirectoryIds] = useState(null)
+
+  useEffect(() => {
+    const q = query(collection(db, 'communityProfiles'), where('coachId', '==', user.uid))
+    return onSnapshot(
+      q,
+      (snap) => setDirectoryIds(new Set(snap.docs.map((d) => d.id))),
+      () => {},
+    )
+  }, [user.uid])
+
+  // Students created before Comunidad JP existed (or who never logged in)
+  // aren't in the directory yet: add them so everyone shows up in the ranking.
+  useEffect(() => {
+    if (!directoryIds || loading) return
+    const missing = students.filter((s) => !directoryIds.has(s.id))
+    if (missing.length === 0) return
+    const batch = writeBatch(db)
+    missing.forEach((s) =>
+      batch.set(doc(db, 'communityProfiles', s.id), { name: s.name || '', coachId: user.uid }),
+    )
+    batch.commit().catch(() => {})
+  }, [directoryIds, students, loading, user.uid])
 
   useEffect(() => {
     const q = query(
@@ -154,6 +179,9 @@ export default function Students() {
       plansSnap.forEach((planDoc) => batch.delete(planDoc.ref))
       batch.delete(doc(db, 'users', student.id))
       await batch.commit()
+      // Also drop them from Comunidad JP. Separate and best-effort: a missing
+      // directory entry must never block deleting the student.
+      deleteDoc(doc(db, 'communityProfiles', student.id)).catch(() => {})
     } catch {
       setError('No se pudo eliminar al alumno. Intentá de nuevo.')
     }

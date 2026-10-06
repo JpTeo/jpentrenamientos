@@ -17,7 +17,7 @@ service cloud.firestore {
 
     // For students: the uid of the coach who created their account.
     function myCoachId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.createdBy;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('createdBy', null);
     }
 
     match /users/{userId} {
@@ -89,8 +89,11 @@ service cloud.firestore {
     // The points must match the challenge's current points and it must be
     // active, so a student can't award themselves arbitrary points.
     match /challengeCompletions/{completionId} {
+      // Classmates (same coach) can read them: Comunidad JP adds them up.
       allow read: if isSignedIn()
-        && (resource.data.studentId == request.auth.uid || resource.data.coachId == request.auth.uid);
+        && (resource.data.studentId == request.auth.uid
+          || resource.data.coachId == request.auth.uid
+          || resource.data.coachId == myCoachId());
       allow create: if isSignedIn()
         && request.resource.data.studentId == request.auth.uid
         && completionId == request.resource.data.challengeId + '_' + request.auth.uid
@@ -98,6 +101,45 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.points == request.resource.data.points
         && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.coachId == request.resource.data.coachId;
       allow update: if false;
+      allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
+    // "Hoy entrené": one check-in per student per day (the id is
+    // <uid>_<YYYY-MM-DD>), worth a fixed 30 points. Keep 30 in sync with
+    // CHECKIN_POINTS in src/lib/checkins.js.
+    match /trainingCheckins/{checkinId} {
+      // Classmates (same coach) can read them: Comunidad JP adds them up.
+      allow read: if isSignedIn()
+        && (resource.data.studentId == request.auth.uid
+          || resource.data.coachId == request.auth.uid
+          || resource.data.coachId == myCoachId());
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.coachId == myCoachId()
+        && request.resource.data.points == 30
+        && request.resource.data.date is string
+        && request.resource.data.date.size() == 10
+        && checkinId == request.auth.uid + '_' + request.resource.data.date
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 100;
+      allow update: if isCoach() && resource.data.coachId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
+    }
+
+    // Comunidad JP directory: just a name and the coach, safe to show to
+    // classmates (the real `users` docs hold email/password and stay private).
+    // A student writes their own entry; the coach can write/backfill any of
+    // theirs.
+    match /communityProfiles/{profileId} {
+      allow read: if isSignedIn()
+        && (resource.data.coachId == request.auth.uid || resource.data.coachId == myCoachId());
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['name', 'coachId'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 80
+        && ((request.auth.uid == profileId && request.resource.data.coachId == myCoachId())
+          || (isCoach() && request.resource.data.coachId == request.auth.uid));
       allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
     }
 

@@ -31,6 +31,14 @@ export async function createStudentAccount({ name, email, password, coachUid }) 
       createdAt: serverTimestamp(),
     })
 
+    // Directory entry for Comunidad JP (name + coach only). Best effort: the
+    // account is already created, and the student re-creates it on login.
+    try {
+      await setDoc(doc(db, 'communityProfiles', studentUid), { name, coachId: coachUid })
+    } catch {
+      // ignore
+    }
+
     await signOut(secondaryAuth)
     return studentUid
   } finally {

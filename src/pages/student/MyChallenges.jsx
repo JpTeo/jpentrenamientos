@@ -18,6 +18,7 @@ export default function MyChallenges() {
   const coachId = profile?.createdBy
   const [challenges, setChallenges] = useState([])
   const [completions, setCompletions] = useState([])
+  const [checkins, setCheckins] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,6 +38,14 @@ export default function MyChallenges() {
     const q = query(collection(db, 'challengeCompletions'), where('studentId', '==', user.uid))
     return onSnapshot(q, (snap) => {
       setCompletions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    })
+  }, [user.uid])
+
+  // "Hoy entrené" check-ins also earn points.
+  useEffect(() => {
+    const q = query(collection(db, 'trainingCheckins'), where('studentId', '==', user.uid))
+    return onSnapshot(q, (snap) => {
+      setCheckins(snap.docs.map((d) => d.data()))
     })
   }, [user.uid])
 
@@ -78,11 +87,21 @@ export default function MyChallenges() {
           <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
             Tus puntos
           </p>
-          <p className="font-mono text-3xl font-semibold text-primary">{totalPoints(completions)}</p>
+          <p className="font-mono text-3xl font-semibold text-primary">
+            {totalPoints(completions) + totalPoints(checkins)}
+          </p>
         </div>
-        <p className="ml-auto text-right text-sm text-muted-foreground">
-          {done.length} {done.length === 1 ? 'desafío completado' : 'desafíos completados'}
-        </p>
+        <div className="ml-auto text-right text-sm text-muted-foreground">
+          <p>
+            {done.length} {done.length === 1 ? 'desafío completado' : 'desafíos completados'}
+          </p>
+          {checkins.length > 0 && (
+            <p>
+              {checkins.length} {checkins.length === 1 ? 'entrenamiento' : 'entrenamientos'}{' '}
+              presenciales
+            </p>
+          )}
+        </div>
       </div>
 
 

@@ -21,6 +21,7 @@ import {
   Plus,
   Trash2,
   Trophy,
+  Users,
   Weight,
   X,
 } from 'lucide-react'
@@ -32,6 +33,8 @@ import { colorForActivity } from '../../lib/activityColors'
 import { normalizeName } from '../../lib/normalizeName'
 import ActivityCalendar from '../../components/ActivityCalendar'
 import { pointsLabel, totalPoints } from '../../lib/challenges'
+import { checkinLabel } from '../../lib/checkins'
+import CheckinCard from '../../components/CheckinCard'
 
 // No tracking a real session length for assigned workouts, so a completed
 // plan contributes this many minutes to the day's bar — just enough to make
@@ -56,6 +59,7 @@ export default function Home() {
   const [completions, setCompletions] = useState([])
   const [activities, setActivities] = useState([])
   const [challengePoints, setChallengePoints] = useState(0)
+  const [checkins, setCheckins] = useState([])
   const [formDate, setFormDate] = useState(null)
   const [activityForm, setActivityForm] = useState(emptyActivityForm)
   const [editingActivityId, setEditingActivityId] = useState(null)
@@ -106,6 +110,35 @@ export default function Home() {
     return unsub
   }, [user.uid])
 
+  useEffect(() => {
+    const q = query(collection(db, 'trainingCheckins'), where('studentId', '==', user.uid))
+    const unsub = onSnapshot(q, (snap) => {
+      setCheckins(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    })
+    return unsub
+  }, [user.uid])
+
+  const todayCheckin = checkins.find((c) => c.date === todayIso()) ?? null
+  const allPoints = challengePoints + totalPoints(checkins)
+
+  // Every strength session (a completed plan or an in-person "Hoy entrené"),
+  // with the calendar day it happened.
+  const strengthEntries = useMemo(() => {
+    const list = []
+    for (const c of completions) {
+      if (!c.completedAt?.seconds) continue
+      list.push({
+        id: c.id,
+        iso: toIsoDate(new Date(c.completedAt.seconds * 1000)),
+        title: c.planTitle,
+      })
+    }
+    for (const c of checkins) {
+      if (c.date) list.push({ id: c.id, iso: c.date, title: `Presencial · ${checkinLabel(c)}` })
+    }
+    return list
+  }, [completions, checkins])
+
   // weekAnchor: any date inside the week being shown (null = current week).
   const [weekAnchor, setWeekAnchor] = useState(null)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -125,18 +158,14 @@ export default function Home() {
   const dayIndex = useMemo(() => {
     const index = {}
     const entryFor = (iso) => (index[iso] ??= { strength: [], activities: [] })
-    for (const c of completions) {
-      if (!c.completedAt?.seconds) continue
-      entryFor(toIsoDate(new Date(c.completedAt.seconds * 1000))).strength.push({
-        id: c.id,
-        planTitle: c.planTitle,
-      })
+    for (const s of strengthEntries) {
+      entryFor(s.iso).strength.push({ id: s.id, planTitle: s.title })
     }
     for (const a of activities) {
       if (a.date) entryFor(a.date).activities.push(a)
     }
     return index
-  }, [completions, activities])
+  }, [strengthEntries, activities])
 
   function shiftWeek(delta) {
     const monday = new Date(`${weekDays[0].iso}T12:00:00`)
@@ -167,9 +196,7 @@ export default function Home() {
 
   const dayData = useMemo(() => {
     return weekDays.map((day) => {
-      const dayCompletions = completions.filter(
-        (c) => c.completedAt?.seconds && toIsoDate(new Date(c.completedAt.seconds * 1000)) === day.iso,
-      )
+      const dayCompletions = strengthEntries.filter((s) => s.iso === day.iso)
       const dayActivities = activities.filter((a) => a.date === day.iso)
 
       const groupsByKey = {}
@@ -193,7 +220,7 @@ export default function Home() {
         activityGroups,
       }
     })
-  }, [weekDays, completions, activities])
+  }, [weekDays, strengthEntries, activities])
 
   const maxMinutes = Math.max(STRENGTH_SESSION_MINUTES, ...dayData.map((d) => d.totalMinutes))
   const weekTotalMinutes = dayData.reduce((sum, d) => sum + d.totalMinutes, 0)
@@ -288,7 +315,16 @@ export default function Home() {
         marcas.
       </p>
 
-      <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+      {profile?.createdBy && (
+        <CheckinCard
+          uid={user.uid}
+          studentName={profile.name}
+          coachId={profile.createdBy}
+          todayCheckin={todayCheckin}
+        />
+      )}
+
+      <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="font-mono text-xs tracking-[0.18em] text-accent-foreground uppercase">
@@ -631,9 +667,27 @@ export default function Home() {
           <div>
             <p className="text-2xl font-semibold">Desafíos</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {challengePoints > 0
-                ? `Sumaste ${pointsLabel(challengePoints)}`
+              {allPoints > 0
+                ? `Sumaste ${pointsLabel(allPoints)}`
                 : 'Completá desafíos y sumá puntos'}
+            </p>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate('/alumno/comunidad')}
+          className="group flex min-h-32 flex-col justify-between rounded-2xl border border-border bg-card p-6 text-left transition-transform hover:-translate-y-1 hover:bg-muted sm:col-span-2"
+        >
+          <div className="flex items-start justify-between">
+            <Users className="size-6 text-primary" aria-hidden="true" />
+            <ArrowRight
+              className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold">Comunidad JP</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mirá los puntos de todos los alumnos
             </p>
           </div>
         </button>

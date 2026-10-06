@@ -13,7 +13,8 @@ export default function CoachLayout() {
   const { user, profile, signOut } = useAuth()
   const [unreadComments, setUnreadComments] = useState(0)
   const [unreadCompletions, setUnreadCompletions] = useState(0)
-  const unreadCount = unreadComments + unreadCompletions
+  const [unreadCheckins, setUnreadCheckins] = useState(0)
+  const unreadCount = unreadComments + unreadCompletions + unreadCheckins
 
   useEffect(() => {
     const unsubComments = onSnapshot(
@@ -32,9 +33,18 @@ export default function CoachLayout() {
       ),
       (snap) => setUnreadCompletions(snap.size),
     )
+    const unsubCheckins = onSnapshot(
+      query(
+        collection(db, 'trainingCheckins'),
+        where('coachId', '==', user.uid),
+        where('read', '==', false),
+      ),
+      (snap) => setUnreadCheckins(snap.size),
+    )
     return () => {
       unsubComments()
       unsubCompletions()
+      unsubCheckins()
     }
   }, [user.uid])
 

@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, query, where, onSnapshot, doc, writeBatch } from 'firebase/firestore'
-import { CircleCheck } from 'lucide-react'
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  deleteDoc,
+  writeBatch,
+} from 'firebase/firestore'
+import { CircleCheck, Dumbbell } from 'lucide-react'
+import { checkinLabel } from '../../lib/checkins'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 
@@ -27,12 +36,13 @@ export default function Messages() {
   const { user } = useAuth()
   const [comments, setComments] = useState([])
   const [completions, setCompletions] = useState([])
+  const [checkins, setCheckins] = useState([])
   const [studentNames, setStudentNames] = useState({})
   const [loading, setLoading] = useState(true)
   // Captured on each source's first snapshot so a row stays highlighted as
   // "new" for this visit even after we flip it to read in the background.
   const initialUnreadIds = useRef(new Set())
-  const seenFirstSnapshot = useRef({ comments: false, completions: false })
+  const seenFirstSnapshot = useRef({ comments: false, completions: false, checkins: false })
 
   useEffect(() => {
     const q = query(collection(db, 'exerciseComments'), where('coachId', '==', user.uid))
@@ -64,6 +74,34 @@ export default function Messages() {
       markRead('planCompletions', unread)
     })
   }, [user.uid])
+
+  useEffect(() => {
+    const q = query(collection(db, 'trainingCheckins'), where('coachId', '==', user.uid))
+    return onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const unread = list.filter((m) => m.read === false)
+      if (!seenFirstSnapshot.current.checkins) {
+        seenFirstSnapshot.current.checkins = true
+        unread.forEach((m) => initialUnreadIds.current.add(m.id))
+      }
+      setCheckins(list)
+      markRead('trainingCheckins', unread)
+    })
+  }, [user.uid])
+
+  async function revokeCheckin(row) {
+    if (
+      !confirm(
+        `¿Quitar el entrenamiento presencial de ${row.studentName || 'este alumno'}? Pierde los ${row.points} puntos y puede volver a marcarlo hoy.`,
+      )
+    )
+      return
+    try {
+      await deleteDoc(doc(db, 'trainingCheckins', row.id))
+    } catch {
+      alert('No se pudo quitar el registro. Intentá de nuevo.')
+    }
+  }
 
   // Older completions don't store the student's name, so look it up.
   useEffect(() => {
@@ -98,10 +136,18 @@ export default function Messages() {
       planTitle: m.planTitle,
       at: m.completedAt,
     }))
-    return [...fromComments, ...fromCompletions].sort(
+    const fromCheckins = checkins.map((m) => ({
+      id: m.id,
+      kind: 'checkin',
+      studentName: m.studentName || studentNames[m.studentId],
+      description: checkinLabel(m),
+      points: m.points,
+      at: m.createdAt,
+    }))
+    return [...fromComments, ...fromCompletions, ...fromCheckins].sort(
       (a, b) => (b.at?.seconds ?? 0) - (a.at?.seconds ?? 0),
     )
-  }, [comments, completions, studentNames])
+  }, [comments, completions, checkins, studentNames])
 
   return (
     <div className="space-y-6">
@@ -112,8 +158,8 @@ export default function Messages() {
           <p className="text-sm text-slate-500">Cargando…</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-slate-500">
-            Todavía no tenés mensajes. Cuando un alumno deje un comentario o termine una
-            planificación, va a aparecer acá.
+            Todavía no tenés mensajes. Cuando un alumno deje un comentario, termine una
+            planificación o marque que entrenó, va a aparecer acá.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -149,6 +195,21 @@ export default function Messages() {
                     <td className="py-3 pr-4 text-slate-600">
                       {m.kind === 'comment' ? (
                         m.message
+                      ) : m.kind === 'checkin' ? (
+                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700">
+                            <Dumbbell className="size-4" aria-hidden="true" /> Entrenó (presencial):{' '}
+                            {m.description}
+                          </span>
+                          <span className="text-xs text-slate-400">+{m.points} pts</span>
+                          <button
+                            type="button"
+                            onClick={() => revokeCheckin(m)}
+                            className="text-xs font-medium text-red-500 hover:underline"
+                          >
+                            Quitar
+                          </button>
+                        </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700">
                           <CircleCheck className="size-4" aria-hidden="true" /> Completó la

@@ -19,6 +19,7 @@ import MyPlans from './pages/student/MyPlans'
 import MyPlanGroup from './pages/student/MyPlanGroup'
 import MyChallenges from './pages/student/MyChallenges'
 import ChallengeDetail from './pages/student/ChallengeDetail'
+import Community from './pages/student/Community'
 import PlanDetail from './pages/student/PlanDetail'
 import Maxes from './pages/student/Maxes'
 
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="planificaciones/:id" element={<PlanDetail />} />
             <Route path="desafios" element={<MyChallenges />} />
             <Route path="desafios/:id" element={<ChallengeDetail />} />
+            <Route path="comunidad" element={<Community />} />
             <Route path="marcas" element={<Maxes />} />
           </Route>
 
