@@ -33,14 +33,40 @@ function chunk(list, size) {
   return chunks
 }
 
-export default function ImportTemplates() {
+// The same importer feeds two destinations: plan templates (default) and
+// challenges, which also need points and an optional deadline.
+const KINDS = {
+  templates: {
+    heading: 'Importar plantillas',
+    backLabel: 'Volver a plantillas',
+    backTo: '/coach/plantillas',
+    collectionName: 'planTemplates',
+    singular: 'plantilla',
+    plural: 'plantillas',
+  },
+  challenges: {
+    heading: 'Importar desafíos',
+    backLabel: 'Volver a desafíos',
+    backTo: '/coach/desafios',
+    collectionName: 'challenges',
+    singular: 'desafío',
+    plural: 'desafíos',
+  },
+}
+
+export default function ImportTemplates({ kind = 'templates' }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const config = KINDS[kind]
+  const isChallenge = kind === 'challenges'
+  const countLabel = (n) => `${n} ${n === 1 ? config.singular : config.plural}`
 
   const [mode, setMode] = useState('text')
   const [text, setText] = useState('')
   const [file, setFile] = useState(null)
   const [prefix, setPrefix] = useState('')
+  const [points, setPoints] = useState('10')
+  const [endDate, setEndDate] = useState('')
   const [exercises, setExercises] = useState([])
   const [days, setDays] = useState(null)
   const [parseError, setParseError] = useState('')
@@ -98,6 +124,11 @@ export default function ImportTemplates() {
 
   async function handleImport() {
     if (!days || days.length === 0) return
+    const pts = Math.round(Number(points))
+    if (isChallenge && (!Number.isFinite(pts) || pts < 1)) {
+      setImportError('Los puntos tienen que ser un número mayor a 0.')
+      return
+    }
     setImporting(true)
     setImportError('')
     setImportResult('')
@@ -125,11 +156,17 @@ export default function ImportTemplates() {
       for (const dayBatch of chunk(days, 400)) {
         const batch = writeBatch(db)
         for (const day of dayBatch) {
-          const ref = doc(collection(db, 'planTemplates'))
+          const ref = doc(collection(db, config.collectionName))
           batch.set(ref, {
             title: titleFor(day),
             coachId: user.uid,
             items: buildDayItems(day, nameToExercise),
+            ...(isChallenge && {
+              description: '',
+              points: pts,
+              endDate: endDate || null,
+              active: true,
+            }),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           })
@@ -138,7 +175,7 @@ export default function ImportTemplates() {
       }
 
       setImportResult(
-        `Se crearon ${days.length} plantilla${days.length === 1 ? '' : 's'}` +
+        `Se ${days.length === 1 ? 'creó' : 'crearon'} ${countLabel(days.length)}` +
           (missingNames.length > 0
             ? ` y ${missingNames.length} ejercicio${missingNames.length === 1 ? '' : 's'} nuevo${missingNames.length === 1 ? '' : 's'} en tu librería.`
             : '.'),
@@ -156,13 +193,13 @@ export default function ImportTemplates() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Importar plantillas</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{config.heading}</h2>
         <button
           type="button"
-          onClick={() => navigate('/coach/plantillas')}
+          onClick={() => navigate(config.backTo)}
           className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
         >
-          Volver a plantillas
+          {config.backLabel}
         </button>
       </div>
 
@@ -196,14 +233,39 @@ export default function ImportTemplates() {
           </button>
         </div>
 
-        <div>
-          <label className={labelClass}>Prefijo (opcional)</label>
-          <input
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value)}
-            placeholder="Ej: Full Body"
-            className={`${inputClass} mb-4 max-w-sm`}
-          />
+        <div className="mb-4 flex flex-wrap gap-4">
+          <div className="w-full max-w-sm">
+            <label className={labelClass}>Prefijo (opcional)</label>
+            <input
+              value={prefix}
+              onChange={(e) => setPrefix(e.target.value)}
+              placeholder={isChallenge ? 'Ej: Desafío de piernas' : 'Ej: Full Body'}
+              className={inputClass}
+            />
+          </div>
+          {isChallenge && (
+            <>
+              <div className="w-32">
+                <label className={labelClass}>Puntos de cada uno</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="w-44">
+                <label className={labelClass}>Fecha límite (opcional)</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {mode === 'text' ? (
@@ -253,7 +315,7 @@ export default function ImportTemplates() {
       {days && days.length > 0 && (
         <div className="rounded-2xl bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900">
-            Vista previa · {days.length} plantilla{days.length === 1 ? '' : 's'}
+            Vista previa · {countLabel(days.length)}
           </h3>
           <div className="max-h-[32rem] space-y-4 overflow-y-auto">
             {days.map((day, i) => (
@@ -312,7 +374,7 @@ export default function ImportTemplates() {
             disabled={importing}
             className="mt-4 rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
           >
-            {importing ? 'Importando…' : `Importar ${days.length} plantilla${days.length === 1 ? '' : 's'}`}
+            {importing ? 'Importando…' : `Importar ${countLabel(days.length)}`}
           </button>
         </div>
       )}

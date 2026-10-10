@@ -41,6 +41,7 @@ export default function App() {
             <Route index element={<Navigate to="planificaciones" replace />} />
             <Route path="plantillas" element={<Templates />} />
             <Route path="plantillas/importar" element={<ImportTemplates />} />
+            <Route path="desafios/importar" element={<ImportTemplates kind="challenges" />} />
             <Route path="plantillas/nueva" element={<TemplateEditor />} />
             <Route path="plantillas/:id" element={<TemplateEditor />} />
             <Route path="planificaciones" element={<Plans />} />
