@@ -210,7 +210,8 @@ export default function ImportTemplates() {
           <div className="space-y-3">
             <p className="text-sm text-slate-500">
               Pegá uno o varios días, con "Día N", "Circuito N" y cada ejercicio con sus
-              repeticiones (12-10-8 o 20x3), tiempo (30" o 10 min) y comentarios entre paréntesis.
+              repeticiones (12-10-8 o 20x3), tiempo (30" o 10 min), metros (200 m o 20 m x 4) y
+              comentarios entre paréntesis.
               Ejemplo:
             </p>
             <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-500">

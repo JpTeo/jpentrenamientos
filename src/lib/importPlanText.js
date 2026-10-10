@@ -23,6 +23,23 @@ const TIME_LINE_RE = new RegExp(
 )
 const TIME_TOKEN_RE = new RegExp(TIME_TOKEN, 'gi')
 
+// Distance-based exercises: meters (200 m, 200m, 200 mts, 200 metros) or
+// kilometers (1 km), optionally repeated (x4) or listed per round
+// (100m-200m-300m). Kilometers are stored as meters.
+const DIST_UNIT = '(?:km|kil[o\\u00f3]metros?|metros?|mts?|m)(?![a-z\\u00e1-\\u00fa])'
+const DIST_TOKEN = `${TIME_NUM}\\s*${DIST_UNIT}`
+const DIST_LINE_RE = new RegExp(
+  `^(.*\\S)\\s+(${DIST_TOKEN}(?:\\s*-\\s*${DIST_TOKEN})*)\\s*(?:[xX\\u00d7]\\s*(\\d+))?\\s*:?\\s*$`,
+  'i',
+)
+const DIST_TOKEN_RE = new RegExp(DIST_TOKEN, 'gi')
+
+function formatDistanceToken(token) {
+  const amount = parseFloat(token.match(/\d+(?:[.,]\d+)?/)[0].replace(',', '.'))
+  const meters = /^\s*[\d.,]+\s*(?:km|kil)/i.test(token) ? amount * 1000 : amount
+  return String(Math.round(meters * 100) / 100)
+}
+
 function formatTimeToken(token) {
   const amount = token.match(/\d+(?:[.,]\d+)?/)[0].replace(',', '.')
   return /min/i.test(token) ? `${amount} min` : `${amount}s`
@@ -52,6 +69,14 @@ function parseExerciseLine(line) {
     const repeat = Math.max(1, parseInt(timeMatch[3], 10) || 1)
     const values = tokens.length > 1 ? tokens : Array.from({ length: repeat }, () => tokens[0])
     return { name: timeMatch[1].trim(), sets: values.length, values, mode: 'time', notes, matched: true }
+  }
+
+  const distMatch = text.match(DIST_LINE_RE)
+  if (distMatch) {
+    const tokens = distMatch[2].match(DIST_TOKEN_RE).map(formatDistanceToken)
+    const repeat = Math.max(1, parseInt(distMatch[3], 10) || 1)
+    const values = tokens.length > 1 ? tokens : Array.from({ length: repeat }, () => tokens[0])
+    return { name: distMatch[1].trim(), sets: values.length, values, mode: 'distance', notes, matched: true }
   }
 
   const dashMatch = text.match(DASH_SETS_RE)

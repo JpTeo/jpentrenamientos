@@ -1,3 +1,5 @@
+import { EXERCISE_MODES, normalizeMode } from '../lib/planItems'
+
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500'
 const labelClass = 'mb-1 block text-xs font-medium text-slate-500'
@@ -37,8 +39,11 @@ function ModeSelect({ mode, onChange }) {
     <div>
       <label className={labelClass}>Tipo</label>
       <select value={mode} onChange={(e) => onChange(e.target.value)} className={inputClass}>
-        <option value="reps">Reps</option>
-        <option value="time">Tiempo</option>
+        {Object.entries(EXERCISE_MODES).map(([value, m]) => (
+          <option key={value} value={value}>
+            {m.optionLabel}
+          </option>
+        ))}
       </select>
     </div>
   )
@@ -204,10 +209,10 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
                     </div>
                     <div className="space-y-3">
                       <ValuesRow
-                        title={ex.mode === 'time' ? 'Tiempo por ronda' : 'Repeticiones por ronda'}
+                        title={`${EXERCISE_MODES[normalizeMode(ex.mode)].perSet} por ronda`}
                         values={ex.values}
                         label="Ronda"
-                        placeholder={ex.mode === 'time' ? '30s' : '12'}
+                        placeholder={EXERCISE_MODES[normalizeMode(ex.mode)].placeholder}
                         onChange={(setIndex, value) =>
                           updateCircuitExerciseValue(index, exIndex, setIndex, value)
                         }
@@ -320,10 +325,10 @@ export default function PlanItemsEditor({ planItems, exerciseGroups, exerciseByI
                   />
                 </div>
                 <ValuesRow
-                  title={block.mode === 'time' ? 'Tiempo por serie' : 'Repeticiones por serie'}
+                  title={`${EXERCISE_MODES[normalizeMode(block.mode)].perSet} por serie`}
                   values={block.values}
                   label="Serie"
-                  placeholder={block.mode === 'time' ? '30s' : '12'}
+                  placeholder={EXERCISE_MODES[normalizeMode(block.mode)].placeholder}
                   onChange={(setIndex, value) => updateExerciseValue(index, setIndex, value)}
                   onRepeatFirst={() => repeatExerciseValues(index)}
                 />

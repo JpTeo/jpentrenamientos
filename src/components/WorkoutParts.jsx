@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Activity, Check, Clock3, Dumbbell, Pencil, X } from 'lucide-react'
 import { formatSeconds } from '../lib/restTime'
+import { EXERCISE_MODES, formatModeValue, normalizeMode } from '../lib/planItems'
 
 // Building blocks of the student workout view, shared by plans and
 // challenges: exercise cards (with the per-set checklist and optional weight
@@ -111,7 +112,7 @@ export function ExerciseCard({
   checkedSets,
   onToggleSet,
 }) {
-  const isTime = exercise.mode === 'time'
+  const modeInfo = EXERCISE_MODES[normalizeMode(exercise.mode)]
   const [imageOpen, setImageOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [weightDrafts, setWeightDrafts] = useState(exercise.weights)
@@ -216,7 +217,7 @@ export function ExerciseCard({
         className={`mt-5 grid ${gridCols} gap-3 text-center text-xs font-medium tracking-wider text-muted-foreground uppercase sm:gap-4`}
       >
         <span className="text-left">{valueLabel}</span>
-        <span>{isTime ? 'Tiempo' : 'Reps'}</span>
+        <span>{modeInfo.label}</span>
         <span>Descanso</span>
         <span>Kg</span>
       </div>
@@ -238,7 +239,7 @@ export function ExerciseCard({
                 {isChecked ? <Check className="size-5" aria-hidden="true" /> : i + 1}
               </button>
               <div className="flex h-12 items-center justify-center rounded-xl border border-border font-mono text-lg">
-                {v || '—'}
+                {v ? formatModeValue(exercise.mode, v) : '—'}
               </div>
               <div className="flex h-12 items-center justify-center rounded-xl border border-border font-mono text-lg">
                 {exercise.rests[i] || '—'}

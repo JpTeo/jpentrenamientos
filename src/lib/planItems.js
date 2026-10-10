@@ -1,3 +1,25 @@
+// How an exercise is measured: repetitions, time, or distance in meters.
+// `label` heads the column the student sees; `perSet` names the coach's input
+// ("<perSet> por serie"); `placeholder` is the example shown in that input.
+export const EXERCISE_MODES = {
+  reps: { optionLabel: 'Reps', label: 'Reps', perSet: 'Repeticiones', placeholder: '12' },
+  time: { optionLabel: 'Tiempo', label: 'Tiempo', perSet: 'Tiempo', placeholder: '30s' },
+  distance: { optionLabel: 'Metros', label: 'Metros', perSet: 'Metros', placeholder: '200' },
+}
+
+export function normalizeMode(mode) {
+  return typeof mode === 'string' && Object.hasOwn(EXERCISE_MODES, mode) ? mode : 'reps'
+}
+
+// Distances are typed as a bare number ("200"); show them with their unit.
+// Anything else the coach wrote ("1 km", "200m") is shown untouched.
+export function formatModeValue(mode, value) {
+  if (mode === 'distance' && /^\d+(?:[.,]\d+)?$/.test(String(value ?? '').trim())) {
+    return `${String(value).trim()} m`
+  }
+  return value
+}
+
 export function resizeValues(values, count) {
   const next = (values || []).slice(0, count)
   while (next.length < count) next.push('')
@@ -73,7 +95,7 @@ export function normalizeItem(raw) {
         exerciseId: ex.exerciseId || '',
         name: ex.name || '',
         imageUrl: ex.imageUrl ?? null,
-        mode: ex.mode === 'time' ? 'time' : 'reps',
+        mode: normalizeMode(ex.mode),
         values: resizeValues(ex.values, rounds),
         weights: toWeightsArray(ex, rounds),
         rests: resizeValues(ex.rests, rounds),
@@ -90,7 +112,7 @@ export function normalizeItem(raw) {
       exerciseId: raw.exerciseId || '',
       name: raw.name || '',
       imageUrl: raw.imageUrl ?? null,
-      mode: raw.mode === 'time' ? 'time' : 'reps',
+      mode: normalizeMode(raw.mode),
       sets,
       values: resizeValues(raw.values, sets),
       weights: toWeightsArray(raw, sets),
