@@ -14,7 +14,20 @@ export default function CoachLayout() {
   const [unreadComments, setUnreadComments] = useState(0)
   const [unreadCompletions, setUnreadCompletions] = useState(0)
   const [unreadCheckins, setUnreadCheckins] = useState(0)
+  const [pendingChallenges, setPendingChallenges] = useState(0)
   const unreadCount = unreadComments + unreadCompletions + unreadCheckins
+
+  useEffect(() => {
+    return onSnapshot(
+      query(
+        collection(db, 'challengeCompletions'),
+        where('coachId', '==', user.uid),
+        where('status', '==', 'pending'),
+      ),
+      (snap) => setPendingChallenges(snap.size),
+      () => {},
+    )
+  }, [user.uid])
 
   useEffect(() => {
     const unsubComments = onSnapshot(
@@ -82,7 +95,14 @@ export default function CoachLayout() {
             Ejercicios
           </NavLink>
           <NavLink to="/coach/desafios" className={linkClass}>
-            Desafíos
+            <span className="inline-flex items-center gap-1.5">
+              Desafíos
+              {pendingChallenges > 0 && (
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {pendingChallenges}
+                </span>
+              )}
+            </span>
           </NavLink>
           <NavLink to="/coach/mensajes" className={linkClass}>
             <span className="inline-flex items-center gap-1.5">

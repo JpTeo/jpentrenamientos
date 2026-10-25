@@ -96,11 +96,17 @@ service cloud.firestore {
           || resource.data.coachId == myCoachId());
       allow create: if isSignedIn()
         && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.status == 'pending'
         && completionId == request.resource.data.challengeId + '_' + request.auth.uid
         && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.active == true
         && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.points == request.resource.data.points
         && get(/databases/$(database)/documents/challenges/$(request.resource.data.challengeId)).data.coachId == request.resource.data.coachId;
-      allow update: if false;
+      // Only the coach can approve (status -> 'approved'); rejecting deletes
+      // the doc so the student can do the challenge again.
+      allow update: if isCoach() && resource.data.coachId == request.auth.uid
+        && request.resource.data.status == 'approved'
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'approvedAt']);
       allow delete: if isCoach() && resource.data.coachId == request.auth.uid;
     }
 

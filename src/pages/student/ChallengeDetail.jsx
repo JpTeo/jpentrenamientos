@@ -5,7 +5,7 @@ import { Check, ChevronLeft, Trophy } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { normalizeItem } from '../../lib/planItems'
-import { formatShortDate, isExpired, pointsLabel } from '../../lib/challenges'
+import { formatShortDate, isExpired, isPending, pointsLabel } from '../../lib/challenges'
 import { useWorkoutProgress } from '../../hooks/useWorkoutProgress'
 import { CompleteButton, ExerciseCard, RestBadge, RestTimer } from '../../components/WorkoutParts'
 import { TimedCircuitStart } from '../../components/CircuitRunner'
@@ -18,12 +18,13 @@ function ChallengeCompleteOverlay({ status, points, onClose }) {
         <Trophy className="size-10" aria-hidden="true" />
       </div>
       <div>
-        <p className="text-2xl font-semibold">¡Desafío completado!</p>
+        <p className="text-2xl font-semibold">¡Desafío terminado!</p>
         <p className="mt-2 text-sm text-white/70">
-          {status === 'saving' && 'Registrando tus puntos…'}
-          {status === 'ok' && `Sumaste ${pointsLabel(points)}. ¡Buen trabajo!`}
-          {status === 'already' && 'Ya habías sumado los puntos de este desafío.'}
-          {status === 'error' && 'No se pudieron registrar los puntos. Avisale a tu profe.'}
+          {status === 'saving' && 'Enviándoselo a tu profe…'}
+          {status === 'ok' &&
+            `Tu profe lo va a revisar. Cuando lo apruebe, sumás ${pointsLabel(points)}.`}
+          {status === 'already' && 'Ya habías enviado este desafío.'}
+          {status === 'error' && 'No se pudo enviar el desafío. Avisale a tu profe.'}
         </p>
       </div>
       <button
@@ -45,6 +46,7 @@ export default function ChallengeDetail() {
   const [challenge, setChallenge] = useState(null)
   const [loading, setLoading] = useState(true)
   const [alreadyDone, setAlreadyDone] = useState(null)
+  const [awaitingApproval, setAwaitingApproval] = useState(false)
   const {
     completed,
     checkedSets,
@@ -66,9 +68,10 @@ export default function ChallengeDetail() {
 
   // One completion doc per (challenge, student): its existence is the "done" flag.
   useEffect(() => {
-    return onSnapshot(doc(db, 'challengeCompletions', `${id}_${user.uid}`), (snap) =>
-      setAlreadyDone(snap.exists()),
-    )
+    return onSnapshot(doc(db, 'challengeCompletions', `${id}_${user.uid}`), (snap) => {
+      setAlreadyDone(snap.exists())
+      setAwaitingApproval(snap.exists() && isPending(snap.data()))
+    })
   }, [id, user.uid])
 
   // Once every block is marked done, award the points (only the first time).
@@ -86,6 +89,7 @@ export default function ChallengeDetail() {
         challengeId: challenge.id,
         challengeTitle: challenge.title,
         points: challenge.points,
+        status: 'pending',
         studentId: user.uid,
         studentName: profile?.name ?? '',
         coachId: challenge.coachId,
@@ -148,8 +152,10 @@ export default function ChallengeDetail() {
       )}
       {alreadyDone && (
         <p className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
-          <Check className="size-4" aria-hidden="true" /> Ya completaste este desafío y sumaste tus
-          puntos.
+          <Check className="size-4" aria-hidden="true" />{' '}
+          {awaitingApproval
+            ? 'Terminaste este desafío. Tu profe lo tiene que aprobar para que sumes los puntos.'
+            : 'Ya completaste este desafío y sumaste tus puntos.'}
         </p>
       )}
 

@@ -1,3 +1,5 @@
+import { isPending } from './challenges'
+
 // Comunidad JP ranking: one row per registered student with the points they
 // earned from challenges and "Hoy entrené" check-ins.
 //
@@ -18,7 +20,11 @@ export function buildRanking(profiles, completions, checkins) {
   }
 
   for (const p of profiles) entry(p.id, p.name)
-  for (const c of completions) entry(c.studentId, c.studentName).challengePoints += Number(c.points) || 0
+  for (const c of completions) {
+    // Challenges still waiting for the coach's OK don't score yet.
+    if (isPending(c)) continue
+    entry(c.studentId, c.studentName).challengePoints += Number(c.points) || 0
+  }
   for (const c of checkins) entry(c.studentId, c.studentName).checkinPoints += Number(c.points) || 0
 
   const rows = [...byId.values()].map((r) => ({ ...r, points: r.challengePoints + r.checkinPoints }))

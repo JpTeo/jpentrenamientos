@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
-import { ArrowRight, Check, ChevronLeft, Trophy } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, Hourglass, Trophy } from 'lucide-react'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/useAuth'
 import { countExercises } from '../../lib/planItems'
@@ -9,6 +9,7 @@ import {
   formatShortDate,
   formatTimestampDate,
   isExpired,
+  isPending,
   pointsLabel,
   totalPoints,
 } from '../../lib/challenges'
@@ -57,10 +58,9 @@ export default function MyChallenges() {
       .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))
   }, [challenges, completedIds])
 
-  const done = useMemo(
-    () => [...completions].sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)),
-    [completions],
-  )
+  const byNewest = (a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)
+  const done = useMemo(() => completions.filter((c) => !isPending(c)).sort(byNewest), [completions])
+  const waiting = useMemo(() => completions.filter(isPending).sort(byNewest), [completions])
 
 
   return (
@@ -76,7 +76,7 @@ export default function MyChallenges() {
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight">Desafíos</h1>
       <p className="mt-3 text-muted-foreground">
-        Completá los desafíos que arma tu profe y sumá puntos.
+        Elegí un desafío, hacelo y, cuando tu profe lo apruebe, sumás los puntos.
       </p>
 
       <div className="mt-8 flex items-center gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5">
@@ -93,8 +93,9 @@ export default function MyChallenges() {
         </div>
         <div className="ml-auto text-right text-sm text-muted-foreground">
           <p>
-            {done.length} {done.length === 1 ? 'desafío completado' : 'desafíos completados'}
+            {done.length} {done.length === 1 ? 'desafío aprobado' : 'desafíos aprobados'}
           </p>
+          {waiting.length > 0 && <p>{waiting.length} esperando aprobación</p>}
           {checkins.length > 0 && (
             <p>
               {checkins.length} {checkins.length === 1 ? 'entrenamiento' : 'entrenamientos'}{' '}
@@ -143,6 +144,32 @@ export default function MyChallenges() {
             </article>
           ))}
         </div>
+      )}
+
+      {waiting.length > 0 && (
+        <>
+          <h2 className="mt-10 text-sm font-medium tracking-wider text-muted-foreground uppercase">
+            Esperando aprobación
+          </h2>
+          <div className="mt-4 flex flex-col gap-2">
+            {waiting.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <Hourglass className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <p className="flex-1 text-sm font-medium">{c.challengeTitle}</p>
+                <span className="text-xs text-muted-foreground">
+                  {formatTimestampDate(c.createdAt)}
+                </span>
+                <span className="font-mono text-sm text-muted-foreground">+{c.points}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Tu profe los revisa y, cuando los aprueba, los puntos se suman.
+          </p>
+        </>
       )}
 
       {done.length > 0 && (

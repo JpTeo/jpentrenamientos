@@ -21,8 +21,16 @@ export function formatTimestampDate(ts) {
   })
 }
 
+// A finished challenge is sent as 'pending' and only earns its points once the
+// coach approves it. Completions saved before approvals existed have no
+// status and count as approved.
+export function isPending(completion) {
+  return completion?.status === 'pending'
+}
+
+// Adds up points; anything still waiting for the coach's OK doesn't count.
 export function totalPoints(completions) {
-  return completions.reduce((sum, c) => sum + (Number(c.points) || 0), 0)
+  return completions.reduce((sum, c) => sum + (isPending(c) ? 0 : Number(c.points) || 0), 0)
 }
 
 export function pointsLabel(points) {

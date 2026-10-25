@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   collection,
   query,
@@ -13,12 +14,20 @@ import { db } from '../../firebase/config'
 import { createStudentAccount } from '../../firebase/createStudent'
 import { useAuth } from '../../contexts/useAuth'
 import { describeProfile } from '../../lib/studentProfile'
+import { splitPlanTitle } from '../../lib/planGroups'
 
 function generatePassword() {
   return Math.random().toString(36).slice(-8)
 }
 
-function StudentRow({ student, onDelete }) {
+function summaryLabel(summary) {
+  if (!summary || summary.plans === 0) return 'Sin planificaciones'
+  const plans = `${summary.plans} ${summary.plans === 1 ? 'planificación' : 'planificaciones'}`
+  const done = `${summary.done} ${summary.done === 1 ? 'entrenamiento hecho' : 'entrenamientos hechos'}`
+  return `${plans} · ${done}`
+}
+
+function StudentRow({ student, summary, onDelete }) {
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -48,8 +57,14 @@ function StudentRow({ student, onDelete }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div>
-        <p className="font-medium text-slate-900">{student.name}</p>
+        <Link
+          to={`/coach/alumnos/${student.id}`}
+          className="font-medium text-slate-900 hover:underline"
+        >
+          {student.name}
+        </Link>
         <p className="text-sm text-slate-500">{student.email}</p>
+        <p className="mt-0.5 text-sm text-emerald-700">{summaryLabel(summary)}</p>
         {student.onboardingDone ? (
           <p className="mt-0.5 text-sm text-slate-600">{describeProfile(student)}</p>
         ) : (
@@ -69,6 +84,12 @@ function StudentRow({ student, onDelete }) {
         )}
       </div>
       <div className="flex items-center gap-2">
+        <Link
+          to={`/coach/alumnos/${student.id}`}
+          className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Planificaciones
+        </Link>
         {student.tempPassword && (
           <button
             type="button"
@@ -101,6 +122,31 @@ export default function Students() {
   const [lastCreated, setLastCreated] = useState(null)
   // ids already in the Comunidad JP directory (null until first loaded)
   const [directoryIds, setDirectoryIds] = useState(null)
+  const [plans, setPlans] = useState([])
+
+  useEffect(() => {
+    const q = query(collection(db, 'plans'), where('coachId', '==', user.uid))
+    return onSnapshot(
+      q,
+      (snap) => setPlans(snap.docs.map((d) => d.data())),
+      () => {},
+    )
+  }, [user.uid])
+
+  // Per student: how many planificaciones (grouped days) and how many
+  // workouts they've finished in total.
+  const summaryByStudent = useMemo(() => {
+    const titles = {}
+    const map = {}
+    for (const p of plans) {
+      if (!map[p.studentId]) map[p.studentId] = { plans: 0, done: 0 }
+      map[p.studentId].done += p.completionCount || 0
+      if (!titles[p.studentId]) titles[p.studentId] = new Set()
+      titles[p.studentId].add(splitPlanTitle(p.title).groupTitle.toLowerCase())
+    }
+    for (const [studentId, set] of Object.entries(titles)) map[studentId].plans = set.size
+    return map
+  }, [plans])
 
   useEffect(() => {
     const q = query(collection(db, 'communityProfiles'), where('coachId', '==', user.uid))
@@ -242,7 +288,12 @@ export default function Students() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {students.map((s) => (
-              <StudentRow key={s.id} student={s} onDelete={handleDeleteStudent} />
+              <StudentRow
+                key={s.id}
+                student={s}
+                summary={summaryByStudent[s.id]}
+                onDelete={handleDeleteStudent}
+              />
             ))}
           </ul>
         )}

@@ -18,6 +18,7 @@ import {
   formatShortDate,
   formatTimestampDate,
   isExpired,
+  isPending,
   pointsLabel,
 } from '../../lib/challenges'
 
@@ -55,9 +56,19 @@ export default function Challenges() {
     })
   }, [user.uid])
 
+  // Finished by the student, waiting for the coach's OK (oldest first).
+  const pending = useMemo(
+    () =>
+      completions
+        .filter(isPending)
+        .sort((a, b) => (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0)),
+    [completions],
+  )
+
   const completionsByChallenge = useMemo(() => {
     const map = {}
     for (const c of completions) {
+      if (isPending(c)) continue
       if (!map[c.challengeId]) map[c.challengeId] = []
       map[c.challengeId].push(c)
     }
@@ -114,6 +125,34 @@ export default function Challenges() {
     }
   }
 
+  async function approveCompletion(completion) {
+    setError('')
+    try {
+      await updateDoc(doc(db, 'challengeCompletions', completion.id), {
+        status: 'approved',
+        approvedAt: serverTimestamp(),
+      })
+    } catch {
+      setError('No se pudo aprobar el desafío. Intentá de nuevo.')
+    }
+  }
+
+  // Rejecting removes the submission, so the student can do it again.
+  async function rejectCompletion(completion) {
+    if (
+      !confirm(
+        `¿Rechazar "${completion.challengeTitle}" de ${completion.studentName || 'este alumno'}? No suma puntos y va a poder volver a hacerlo.`,
+      )
+    )
+      return
+    setError('')
+    try {
+      await deleteDoc(doc(db, 'challengeCompletions', completion.id))
+    } catch {
+      setError('No se pudo rechazar el desafío. Intentá de nuevo.')
+    }
+  }
+
   async function revokeCompletion(completion) {
     if (
       !confirm(
@@ -151,13 +190,55 @@ export default function Challenges() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {pending.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <h3 className="font-semibold text-slate-900">
+            Pendientes de aprobar ({pending.length})
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Tus alumnos terminaron estos desafíos. Los puntos se suman cuando los aprobás.
+          </p>
+          <ul className="mt-3 divide-y divide-amber-100">
+            {pending.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    {p.studentName || 'Alumno'}
+                    <span className="font-normal text-slate-500"> · {p.challengeTitle}</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatTimestampDate(p.createdAt)} · {pointsLabel(p.points)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => rejectCompletion(p)}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => approveCompletion(p)}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                  >
+                    Aprobar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         {loading ? (
           <p className="text-sm text-slate-500">Cargando…</p>
         ) : challenges.length === 0 ? (
           <p className="text-sm text-slate-500">
             Todavía no creaste ningún desafío. Armalo como una plantilla, con ejercicios y
-            circuitos: tus alumnos lo hacen desde su sección Desafíos y suman puntos al terminarlo.
+            circuitos: tus alumnos lo hacen desde su sección Desafíos y, cuando lo aprobás, suman los puntos.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">

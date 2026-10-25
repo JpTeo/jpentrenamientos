@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import CoachLayout from './pages/coach/CoachLayout'
 import Students from './pages/coach/Students'
+import StudentDetail from './pages/coach/StudentDetail'
 import Exercises from './pages/coach/Exercises'
 import Plans from './pages/coach/Plans'
 import PlanEditor from './pages/coach/PlanEditor'
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="planificaciones/nueva" element={<PlanEditor />} />
             <Route path="planificaciones/:id" element={<PlanEditor />} />
             <Route path="alumnos" element={<Students />} />
+            <Route path="alumnos/:id" element={<StudentDetail />} />
             <Route path="ejercicios" element={<Exercises />} />
             <Route path="mensajes" element={<Messages />} />
             <Route path="desafios" element={<Challenges />} />

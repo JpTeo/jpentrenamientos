@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   collection,
   query,
@@ -27,11 +27,14 @@ export default function PlanEditor() {
   const { id } = useParams()
   const isEditing = Boolean(id)
   const navigate = useNavigate()
+  // Coming from a student's page: preselect them and return there afterwards.
+  const location = useLocation()
+  const backTo = location.state?.from ?? '/coach/planificaciones'
 
   const [students, setStudents] = useState([])
   const [exercises, setExercises] = useState([])
   const [title, setTitle] = useState('')
-  const [studentId, setStudentId] = useState('')
+  const [studentId, setStudentId] = useState(location.state?.studentId ?? '')
   const [editItems, setEditItems] = useState(null)
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
@@ -139,7 +142,7 @@ export default function PlanEditor() {
         })
         await batch.commit()
       }
-      navigate('/coach/planificaciones')
+      navigate(backTo)
     } catch {
       setError('No se pudo guardar la planificación. Intentá de nuevo.')
     } finally {
@@ -152,7 +155,7 @@ export default function PlanEditor() {
     setSaving(true)
     try {
       await deleteDoc(doc(db, 'plans', id))
-      navigate('/coach/planificaciones')
+      navigate(backTo)
     } catch {
       setError('No se pudo eliminar la planificación.')
       setSaving(false)
